@@ -15,10 +15,14 @@
 	* maybe some UI
 
 	Changelog:
+	7.5.7
+	- changed to use ChatThrottleLib by Mikk  - http://www.wowwiki.com/ChatThrottleLib which should prevent disconnects when a large raid gets an achievment
+	- allow the channel password to be set to NIL by typeing /g2g password
+
 	7.5.6
-	- fixed a few minor bugs related to achieviemnts
-	- achievments are no longer broadcasted unless they come from someone in your guild.
-	- achievment messages are now displaed in the correct window
+	fixed a few minor bugs related to achievements
+	- achievements are no longer broadcast unless they come from someone in your guild.
+	- achievement messages are now displayed in the correct window
 	
 	7.5.5
 	- achievements are now propagated across guilds
@@ -181,8 +185,8 @@ G2G_DEMOTE	= string.format(ERR_GUILD_DEMOTE_SSS, "(.+)", "(.+)", "(.+)")
 ]]--	 
 
 Guild2Guild = {
-	Version = "7.5.6",
-	VerNum = 756,
+	Version = "7.5.7",
+	VerNum = 757,
 	Loaded = false,
 	Initialized = false,
 	Finalizing = false,
@@ -908,7 +912,7 @@ Guild2Guild = {
 		if (not(additionalMsg == nil)) then
 			sMsg = sMsg..";"..additionalMsg
 		end
-		SendAddonMessage("G2G",sMsg,"GUILD")
+		ChatThrottleLib:SendAddonMessage("ALERT", "G2G", sMsg, "GUILD");
 	end,
 
 ----------------------------
@@ -924,9 +928,9 @@ Guild2Guild = {
 		local sMsg = "<G2G"..self.VerNum..">"..guildName..";"..GGlocal.guildRankIndex..msgType
 
 		if (dest == "CHANNEL") then
-			SendChatMessage(sMsg,"CHANNEL",nil,sID)
+			ChatThrottleLib:SendChatMessage("ALERT", "G2G", sMsg,"CHANNEL",GetDefaultLanguage("player"),sID)
 		elseif (dest == "PLAYER") then
-			SendAddonMessage("G2G",sMsg,"WHISPER",player)
+			ChatThrottleLib:SendAddonMessage("ALERT", "G2G", sMsg, "WHISPER",player)
 		end
 	end,
 
@@ -1457,9 +1461,9 @@ Guild2Guild = {
 				if (key ~= GetGuildInfo("player")) then
 					if (value and value ~= nil and value[1] ~= nil and value[1] ~= UnitName("player") and value[5]) then
 						if (value[2] < 729) then
-							SendChatMessage(sMsg[msg],"WHISPER",this.language,value[1])
+							ChatThrottleLib:SendChatMessage("NORMAL", "G2G", sMsg[msg],"WHISPER",GetDefaultLanguage("player"),value[1])
 						else
-							SendAddonMessage("G2G",sMsg[msg],"WHISPER",value[1])
+							ChatThrottleLib:SendAddonMessage("NORMAL", "G2G", sMsg[msg], "WHISPER",value[1])
 						end
 					end
 				end
@@ -1565,11 +1569,9 @@ Guild2Guild = {
 			if (key ~= GetGuildInfo("player")) then
 				if (value and value ~= nil and value[1] ~= nil and value[1] ~= UnitName("player") and value[5]) then
 					if (value[2] > 741) then
-						SendAddonMessage("G2G",sMsg,"WHISPER",value[1])
+						ChatThrottleLib:SendAddonMessage("BULK", "G2G",sMsg,"WHISPER",value[1])
 					end
 				end
---			else
---				SendAddonMessage("G2G",sMsg,"WHISPER",value[1])
 			end
 		end	
 	end,
@@ -1629,7 +1631,7 @@ Guild2Guild = {
 			if (key ~= GetGuildInfo("player")) then
 				if (value and value ~= nil and value[1] ~= nil and value[1] ~= UnitName("player") and value[5]) then
 					if (value[2] > 734) then
-						SendAddonMessage("G2G",sMsg,"WHISPER",value[1])
+						ChatThrottleLib:SendAddonMessage("BULK", "G2G",sMsg,"WHISPER",value[1])					
 					end
 				end
 			end
@@ -1662,7 +1664,7 @@ Guild2Guild = {
 		GGlocal.receivedAddonMessage = {addon,sMsg}
 		
 		if (found) then
-			SendAddonMessage(addon,sMsg,"GUILD")
+			ChatThrottleLib:SendAddonMessage("BULK",addon,sMsg,"GUILD")
 		end
 	end,
 
@@ -1790,14 +1792,14 @@ Guild2Guild = {
 			end
 			if (sChan == "OFFICER" and GGlocal.OfficerRank ~= nil and not GGlocal.PlayerIsOfficer) then
 				if (not GGlocal.OfficersWarned) then
-					SendChatMessage("G2GO["..sender.."]: Guild2Guild: Warning officer chat is not connected to "..GetGuildInfo("player"),"WHISPER",this.language,sender)
+					ChatThrottleLib:SendChatMessage("NORMAL", "G2G", "G2GO["..sender.."]: Guild2Guild: Warning officer chat is not connected to "..GetGuildInfo("player"),"WHISPER",GetDefaultLanguage("player"),sender)
 					GGlocal.OfficersWarned = true
 				end
 				return
 			end
 
 			local sMsg = string.sub(message,5)
-			return SendChatMessage(sMsg,sChan,this.language,sID)
+			return ChatThrottleLib:SendChatMessage("NORMAL", "G2G", sMsg,sChan,GetDefaultLanguage("player"),sID)
 		else
 			if (GGlocal.RejectedRelays[sender] == nil) then
 				self:SendCrossGuildSyncMessage("Q", "PLAYER", sender)
@@ -1821,10 +1823,10 @@ Guild2Guild = {
 		local GGVars = Guild2Guild_Vars	
 		local GGlocal = Guild2Guild.LocalVars
 
-		SendChatMessage("Version Number: "..self.Version,"WHISPER",nil,sender)
+		ChatThrottleLib:SendChatMessage("BULK", "G2G", "Version Number: "..self.Version,"WHISPER",GetDefaultLanguage("player"),sender)
 		for guild, relay in pairs(GGlocal.Guilds) do
 			if relay[3] then sTemp = "true" else sTemp = "false" end
-			SendChatMessage("Connected to: "..guild.." using "..relay[1]..": Ver"..relay[2]..", Officer: "..sTemp,"WHISPER",nil,sender)
+			ChatThrottleLib:SendChatMessage("BULK", "G2G", "Connected to: "..guild.." using "..relay[1]..": Ver"..relay[2]..", Officer: "..sTemp,"WHISPER",GetDefaultLanguage("player"),sender)
 		end
 
 		local sTemp = ""
@@ -1846,10 +1848,10 @@ Guild2Guild = {
 		else
 			sTemp = sNOTSET
 		end
-		SendChatMessage("Allied Guilds:"..sTemp,"WHISPER",nil,sender)
+		ChatThrottleLib:SendChatMessage("BULK", "G2G", "Allied Guilds:"..sTemp,"WHISPER",GetDefaultLanguage("player"),sender)
 		count = 0
 		sTemp = ""
-		if rejectCount > 0 then SendChatMessage("Rejected Connections:"..sRejectedConnections,"WHISPER",nil,sender) end
+		if rejectCount > 0 then ChatThrottleLib:SendChatMessage("BULK", "G2G", "Rejected Connections:"..sRejectedConnections,"WHISPER",GetDefaultLanguage("player"),sender) end
 		rejectCount = 0
 		sRejectedConnections = ""
 		
@@ -1868,21 +1870,21 @@ Guild2Guild = {
 		else
 			sTemp = sNOTSET
 		end
-		SendChatMessage("Verified Guilds:"..sTemp,"WHISPER",nil,sender)
-		if rejectCount > 0 then SendChatMessage("Unverified Guilds:"..sRejectedConnections,"WHISPER",nil,sender) end
+		ChatThrottleLib:SendChatMessage("BULK", "G2G", "Verified Guilds:"..sTemp,"WHISPER",GetDefaultLanguage("player"),sender)
+		if rejectCount > 0 then ChatThrottleLib:SendChatMessage("BULK", "G2G", "Unverified Guilds:"..sRejectedConnections,"WHISPER",GetDefaultLanguage("player"),sender) end
 		if (GGlocal.OfficerRank ~= nil) then sTemp = GGlocal.OfficerRank else sTemp = sNOTSET end
-		SendChatMessage("Officer Rank:"..sTemp,"WHISPER",nil,sender)
+		ChatThrottleLib:SendChatMessage("BULK", "G2G", "Officer Rank:"..sTemp,"WHISPER",GetDefaultLanguage("player"),sender)
 		if GGVars.EchoGuild then sTemp = sON else sTemp = sOFF end
-		SendChatMessage("Guild chat relay is: "..sTemp,"WHISPER",nil,sender)
+		ChatThrottleLib:SendChatMessage("BULK", "G2G", "Guild chat relay is: "..sTemp,"WHISPER",GetDefaultLanguage("player"),sender)
 		if GGVars.EchoOfficer then sTemp = sON else sTemp = sOFF end
-		SendChatMessage("Officer chat relay is: "..sTemp,"WHISPER",nil,sender)
+		ChatThrottleLib:SendChatMessage("BULK", "G2G", "Officer chat relay is: "..sTemp,"WHISPER",GetDefaultLanguage("player"),sender)
 		if GGVars.ShowNewRelayMessages then sTemp = sON else sTemp = sOFF end
-		SendChatMessage("Relay Change Notification is: "..sTemp,"WHISPER",nil,sender)
+		ChatThrottleLib:SendChatMessage("BULK", "G2G", "Relay Change Notification is: "..sTemp,"WHISPER",GetDefaultLanguage("player"),sender)
 		if GGVars.Startdelay then sTemp = GGVars.Startdelay else sTemp = sNOTSET end
-		SendChatMessage("The Startdelay is: "..sTemp,"WHISPER",nil,sender)
-		SendChatMessage("Oldest Version Seen: "..GGlocal.OldestVersion,"WHISPER",nil,sender)
+		ChatThrottleLib:SendChatMessage("BULK", "G2G", "The Startdelay is: "..sTemp,"WHISPER",GetDefaultLanguage("player"),sender)
+		ChatThrottleLib:SendChatMessage("BULK", "G2G", "Oldest Version Seen: "..GGlocal.OldestVersion,"WHISPER",GetDefaultLanguage("player"),sender)
 		for player, version in pairs(GGlocal.versions) do
-			SendChatMessage("  "..player..": "..version,"WHISPER",nil,sender)
+			ChatThrottleLib:SendChatMessage("BULK", "G2G", "  "..player..": "..version,"WHISPER",GetDefaultLanguage("player"),sender)
 		end
 
 	end,
@@ -2057,8 +2059,6 @@ Guild2Guild = {
       	-- StartDelay
 		elseif tCmds[1] == "startdelay" then
 			if tCmds[2] then
-				if GGVars.Startdelay then
-     				end
 				GGVars.Startdelay = tonumber(tCmds[2])
 				self:DCF("Startdelay is now set to: "..cColors.cWhite..tCmds[2],1)
 			else
@@ -2066,14 +2066,11 @@ Guild2Guild = {
 			end
       	-- Password
 		elseif tCmds[1] == "password" then
-			if tCmds[2] then
-				GGVars.Password = tCmds[2]
-				self:Init_Channel()
-				self:DCF("Password is now set to: "..cColors.cWhite..tCmds[2],1)
-			else
-				self:DCF(false,0)
-			end
-
+			GGVars.Password = tCmds[2]
+			self:Init_Channel()
+			local sTemp
+			if GGVars.Password then sTemp = cColors.cWhite..GGVars.Password else sTemp = sNOTSET end
+			self:DCF("Password is now set to: "..cColors.cWhite..sTemp,1)
 		-- REPORT
 		elseif tCmds[1] == "report" then
 			local sTemp

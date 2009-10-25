@@ -116,10 +116,14 @@ You are free to copy, distribute, display, and perform these addons and to make 
 All World or Warcraft game related content and images are the property of Blizzard Entertainment, Inc. and protected by U.S. and international copyright laws. The Addon (code and supporting files) is property of Durthos of Proudmoore and protected by U.S. and international copyright laws. 
 
 == Changelog ==
+7.5.7
+- changed to use ChatThrottleLib by Mikk  - http://www.wowwiki.com/ChatThrottleLib which should prevent disconnects when a large raid gets an achievment
+- allow the channel password to be set to NIL by typeing /g2g password
+
 7.5.6
-- fixed a few minor bugs related to achieviemnts
-- achievments are no longer broadcasted unless they come from someone in your guild.
-- achievment messages are now displaed in the correct window
+fixed a few minor bugs related to achievements
+- achievements are no longer broadcast unless they come from someone in your guild.
+- achievement messages are now displayed in the correct window
 
 
 7.5.5
