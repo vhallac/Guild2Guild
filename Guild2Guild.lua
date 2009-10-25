@@ -15,9 +15,12 @@
 	* maybe some UI
 
 	Changelog:
+	7.5.8
+	- shortened the inter-guild message when a player earns an achievement
+
 	7.5.7
-	- changed to use ChatThrottleLib by Mikk  - http://www.wowwiki.com/ChatThrottleLib which should prevent disconnects when a large raid gets an achievment
-	- allow the channel password to be set to NIL by typeing /g2g password
+	- changed to use ChatThrottleLib by Mikk  - http://www.wowwiki.com/ChatThrottleLib which should prevent disconnects when a large raid gets an achievement
+	- allow the channel password to be set to NIL by typing /g2g password
 
 	7.5.6
 	fixed a few minor bugs related to achievements
@@ -175,8 +178,8 @@ G2G_JOINED	= string.format(ERR_GUILD_JOIN_S, "(.+)")
 G2G_LEFT	= string.format(ERR_GUILD_LEAVE_S, "(.+)")
 G2G_PROMO	= string.format(ERR_GUILD_PROMOTE_SSS, "(.+)", "(.+)", "(.+)")
 G2G_DEMOTE	= string.format(ERR_GUILD_DEMOTE_SSS, "(.+)", "(.+)", "(.+)")
-
-
+G2G_ACHIEVEMENT = string.format(ACHIEVEMENT_BROADCAST, "(.+)", "(.+)")
+G2G_F_ACHIEVEMENT = string.format(ACHIEVEMENT_BROADCAST, "|Hplayer:%s|h[%s]|h", "%s")
 
 --[[ 		
 		¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤
@@ -185,8 +188,8 @@ G2G_DEMOTE	= string.format(ERR_GUILD_DEMOTE_SSS, "(.+)", "(.+)", "(.+)")
 ]]--	 
 
 Guild2Guild = {
-	Version = "7.5.7",
-	VerNum = 757,
+	Version = "7.5.8",
+	VerNum = 758,
 	Loaded = false,
 	Initialized = false,
 	Finalizing = false,
@@ -1549,9 +1552,11 @@ Guild2Guild = {
 	HandleChatMessageAchievement = function(self, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11)
 		self:Guild2Guild_PrintDEBUG("HandleChatMessageAchievement", arg1, arg2)
 
+		_, _, _, achievement = string.find(arg1, G2G_ACHIEVEMENT)
+
 		local event;
-		event = "A"
-		self:SendOutgoingAuxMessage(arg2,event, arg1);
+		event = "B"
+		self:SendOutgoingAuxMessage(arg2,event, achievement);
 	end,
 
 ----------------------------
@@ -1718,6 +1723,17 @@ Guild2Guild = {
 					ChatFrame_OnEvent(chatFrame, "CHAT_MSG_GUILD_ACHIEVEMENT",  rest .." ("..guild..")", player, "", "", player, "", 0, 0, "", 0, 172);
 				end
 			end
+		elseif (event == "B") then
+			self:Guild2Guild_PrintDEBUG("displaying ",event,player, guild, rest, "HandleGuildAuxMessage")
+			achievement = rest;
+			sMsg = string.format(G2G_F_ACHIEVEMENT, player, player, achievement).." ("..guild..")"		
+			for i=1, NUM_CHAT_WINDOWS do
+				chatFrame = getglobal("ChatFrame"..i);
+				if (Guild2Guild.IsChatTypeVisible("GUILD_ACHIEVEMENT", chatFrame)) then
+					ChatFrame_OnEvent(chatFrame, "CHAT_MSG_GUILD_ACHIEVEMENT",  sMsg, player, "", "", player, "", 0, 0, "", 0, 172);
+				end
+			end
+			sMsg = nil
 		end
 		
 		if (sMsg == nil) then
@@ -2225,9 +2241,9 @@ Guild2Guild = {
 		-- DEFAULT
 		elseif tCmds[1] == "test" then
 
-		local event = "A";
+		local event = "B";
 		local player = "Durthos";
-		local extra = "|Hplayer:Durthos|h[Durthos]|h has earned the achievement |cffffff00|Hachievement:768:030000000021A890:1:6:10:9:4294967295:4294967295:4294967295:4294967295|h[Explore Tirisfal Glades]|h|r!";
+		local extra = "|cffffff00|Hachievement:768:030000000021A890:1:6:10:9:4294967295:4294967295:4294967295:4294967295|h[Explore Tirisfal Glades]|h|r";
 		local sMsg = event..";"..player..";"..GetGuildInfo("player")..";"..extra
 		
 		self:HandleGuildAuxMessage(sMsg);
