@@ -15,6 +15,9 @@
 	* maybe some UI
 
 	Changelog:
+	7.5.4
+	- updated for current TOC
+	
 	7.5.3
 	- added an additional call to set the variable (arg2) for the sender. For the case of addons like Prat and PhanxChat 
 	which were incorrectly reading it from the global namespace instead of the passed in arguments. This fixes the bug
@@ -167,8 +170,8 @@ G2G_DEMOTE	= string.format(ERR_GUILD_DEMOTE_SSS, "(.+)", "(.+)", "(.+)")
 ]]--	 
 
 Guild2Guild = {
-	Version = "7.5.3",
-	VerNum = 753,
+	Version = "7.5.4",
+	VerNum = 754,
 	Loaded = false,
 	Initialized = false,
 	Finalizing = false,
