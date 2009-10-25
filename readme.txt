@@ -1,5 +1,5 @@
 いいいいいいいいいいいいいいいいいいいいいいいいいいいいいいいいいいいい
-Guild2Guild v7.4.8 - Updated by Durthos of Proudmoore - dbeleznay@shaw.ca
+Guild2Guild v7.5.4 - Updated by Durthos of Proudmoore - dbeleznay@shaw.ca
 Modified by Tassleoff
 Originally by Elviso of Mug'Thol - elviso@kenman.net
 いいいいいいいいいいいいいいいいいいいいいいいいいいいいいいいいいいいい
@@ -71,15 +71,19 @@ To turn this addon on or off:
 
   /g2g [on|off]
 
-The turn guild chat on or off:
+To turn guild chat on or off:
 
   /g2g gchat [on|off]
 
-The turn officer chat on or off:
+To turn officer chat on or off:
 
   /g2g ochat [on|off]
+  
+To turn relay change notification on or off:
 
-The set or change the hidden synchronization channel used by this addon:
+  /g2g relaynotify [on|off]
+
+To set or change the hidden synchronization channel used by this addon:
 
   /g2g channel [MY_CHANNEL]
 
@@ -92,11 +96,34 @@ snapshot of the last few minutes of guild2guild activity. If you mail me your gu
 variables file when you log out then I will be better able to debug what went wrong.)
 
 == Changelog ==
+7.5.4
+- updated for current TOC
+	
+
+7.5.3
+- added an additional call to set the variable (arg2) for the sender. For the case of addons like Prat and PhanxChat 
+which were incorrectly reading it from the global namespace instead of the passed in arguments. This fixes the bug
+where some users would see messages as coming from the relay instead of from the correct sender
+
+7.5.2
+- initialized chat color properly
+	
+7.5.1
+- fixed a bug that was still causing duplicate names after relay changes
+	
+7.5.0
+- Updated to current TOC
+- fixed up after blizzard changed the chatframe api - disabled UI to change the chatframe
+	
+7.4.9
+- Updated to current TOC
+- added the ability to disable notification messages when the relay changes
+
 7.4.8
 - added the ability for a relay to step down if there are others available (passive mode)
 - /report shows the complete list of potential relays, and their versions
 - no longer allow allied guilds to be put on the rejected relay list
-- added a way to change the chat color for incoming guild messages to the context menu for the chat frame
+- added a way to change the chat color for incoming guild messages to the context menu for the chat frame (later broken by blizzerd)
 - fixed a synchronization issue where an election would happen immediately after a player logged in if it took them a long time to load
 
 

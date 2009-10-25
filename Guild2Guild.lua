@@ -15,6 +15,29 @@
 	* maybe some UI
 
 	Changelog:
+	7.5.4
+	- updated for current TOC
+
+	7.5.3
+	- added an additional call to set the variable (arg2) for the sender. For the case of addons like Prat and PhanxChat
+	which were incorrectly reading it from the global namespace instead of the passed in arguments. This fixes the bug
+	where some users would see messages as coming from the relay instead of from the correct sender
+	- added more useful debugging information
+
+	7.5.2
+	- initialized chat color properly
+
+	7.5.1
+	- fixed a bug that was still causing duplicate names after relay changes
+
+	7.5.0
+	- Updated to current TOC
+	- fixed up after blizzard changed the chatframe api
+
+	7.4.9
+	- Updated to current TOC
+	- added the ability to disable notification messages
+
 	7.4.8
 	- ability for a relay to step down if there are others available (passive mode)
 	- /report shows the complete list of potential relays, and their versions
@@ -147,11 +170,11 @@ G2G_DEMOTE	= string.format(ERR_GUILD_DEMOTE_SSS, "(.+)", "(.+)", "(.+)")
 ]]--
 
 Guild2Guild = {
+	Version = "7.5.4",
+	VerNum = 754,
 	playerNotes = {},
 	otherPlayerNotes = {},
 	knownRosters = {},
-	Version = "7.4.8",
-	VerNum = 748,
 	Loaded = false,
 	Initialized = false,
 	Finalizing = false,
@@ -205,7 +228,7 @@ Guild2Guild = {
 		ignores = {},
 		channelRoster = {},
 		localRank = 0,
-		versions = {},
+		versions = {}
 	},
 
 --[[
@@ -304,23 +327,10 @@ Guild2Guild = {
 			if (Guild2Guild_Vars.Startdelay == false) then
 				Guild2Guild_Vars.Startdelay = 15
 			end
-
 			self:Event_Manager()
 			self.Initialized = true
 --			self:executeGUIs("initialize")
 			return this:UnregisterEvent("ADDON_LOADED")
-
-
-
-
-
-
-
-
-
-
-
-
 		end
 	end,
 
@@ -447,7 +457,7 @@ Guild2Guild = {
 		if ((time() - GGlocal.Magic) < GGVars.Startdelay) then return false end
 		if not GGlocal.GuildInfoInitialized then
 			if (IsInGuild()) then
-				GuildRoster();
+				GuildRoster();   -- calling GuildRoster will force a callback on which should call ParseGuildInfo that will eventually initialize GuildInfo
 			elseif ((time() - GGlocal.Magic) > 90) then
 				self:Guild2Guild_PrintDEBUG("player not in guild","ReadyToWork")
 				self:DCF(cColors.cRed.."Player is not in a guild:"..cColors.cWhite.."disabling guild2guild.",1)
@@ -790,38 +800,43 @@ local name, note
 -- NewChatHandler - used to avoid displaying chat messages sent by Guild2Guild
 ----------------------------
 
-	NewChatHandler = function (event)
+	NewChatHandler = function (self,event,...)
+		local incMsg, sender, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11 = ...;
 		-- Use a "return" command to prevent the incoming messsages that we don't want
 		-- from appearing in the chat frame.
 
 		if (event == "CHAT_MSG_WHISPER") then
-			if (arg1 and arg1 ~= nil) then
-				if (string.sub(arg1,1,3) == "G2G") then
---					return;
+			if (incMsg and incMsg ~= nil) then
+				if (string.sub(incMsg,1,3) == "G2G") then
+					return;
 				end
 			end
 
 		elseif (event == "CHAT_MSG_WHISPER_INFORM") then
-			if (arg1 and arg1 ~= nil) then
-				if (string.sub(arg1,1,3) == "G2G") then
---					return;
+			if (incMsg and incMsg ~= nil) then
+				if (string.sub(incMsg,1,3) == "G2G") then
+					return;
 				end
 			end
   		elseif event == "CHAT_MSG_CHANNEL" and arg9 and arg9 ~= nil and strlower(arg9) == strlower(Guild2Guild_Vars.Channel) then
 			return;
   		elseif event == "CHAT_MSG_GUILD" or event == "CHAT_MSG_OFFICER" then
-		  	if (arg2 and arg2 ~=nil and Guild2Guild.LocalVars.Leader and Guild2Guild.LocalVars.Leader ~= nil and arg2 == Guild2Guild.LocalVars.Leader) then
-				if (arg1 and arg1 ~= nil) then
-					if (string.sub(arg1,1,1) == "[") then
-						local found, sender, msg
-						found,_,sender,msg = string.find(arg1, "%[([^%]]*)%]:(.*)")
+--			Guild2Guild.Guild2Guild_PrintDEBUG(Guild2Guild,"inc", sender, Guild2Guild.LocalVars.Leader, "NewChatHandler1")
+
+		  	if (sender and sender ~=nil and Guild2Guild.LocalVars.Leader and Guild2Guild.LocalVars.Leader ~= nil and sender == Guild2Guild.LocalVars.Leader) then
+				if (incMsg and incMsg ~= nil) then
+					if (string.sub(incMsg,1,1) == "[") then
+--						Guild2Guild.Guild2Guild_PrintDEBUG(Guild2Guild,"inc", incMsg,sender,"NewChatHandler2")
+						local found, realSender, msg
+						found,_,realSender,msg = string.find(incMsg, "%[([^%]]*)%]:(.*)")
 						if (found) then
 							arg1 = Guild2Guild_Vars.color..msg
-							arg2 = sender
+							arg2 = realSender -- to see if setting the global variable helps
+--							Guild2Guild.Guild2Guild_PrintDEBUG(Guild2Guild,"disp", arg1,realSender,arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11,"NewChatHandler3")
 						end
 
 						if (Guild2Guild.LocalVars.ignores[sender]) then
---							return
+							return
 						end
 					end
 				end
@@ -829,7 +844,7 @@ local name, note
 		end
 
 	-- Call the original ChatFrame_OnEvent function for default handling of the event.
-	G2GOldChatHandler(event);
+	G2GOldChatHandler(self, event, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11);
 
 	end,
 
@@ -1354,7 +1369,9 @@ local name, note
 -- UpdateRelayInfo -
 ----------------------------
 	UpdateRelayInfo = function(self,guild,sender,version,officer, reintialize, addOnMessage)
+		self:Guild2Guild_PrintDEBUG(guild, sender, version, officer, addOnMessage,"UpdateRelayInfo")
 		local GGlocal = Guild2Guild.LocalVars
+		local GGVars = Guild2Guild_Vars
 
 		if (addOnMessage) then
 			GGlocal.VerifiedGuilds[guild] = true
@@ -1373,7 +1390,7 @@ local name, note
 		end
 
 		if (GGlocal.AlliedGuilds == nil or (GGlocal.AlliedGuilds[guild] ~= nil and GGlocal.AlliedGuilds[guild])) then
-			if (GGlocal.Guilds[guild] ~= nil and GGlocal.Guilds[guild][1] ~= sender) then
+			if (GGVars.ShowNewRelayMessages and (GGlocal.Guilds[guild] ~= nil and GGlocal.Guilds[guild][1] ~= sender)) then
 				self:DCF(guild.." just elected a new relay: ".. sender,1)
 			end
 
@@ -1559,12 +1576,10 @@ local name, note
 			if (key ~= GetGuildInfo("player")) then
 				if (value and value ~= nil and value[1] ~= nil and value[1] ~= UnitName("player") and value[5]) then
 					if (value[2] > 741) then
---						ChatFrame3:AddMessage("value[1]=" .. value[1])
 						SendAddonMessage("G2G",sMsg,"WHISPER",value[1])
 					end
 				end
 --			else
---				ChatFrame3:AddMessage("value[1]=" .. value[1])
 --				SendAddonMessage("G2G",sMsg,"WHISPER",value[1])
 			end
 		end
@@ -1913,6 +1928,8 @@ local name, note
 		SendChatMessage("Guild chat relay is: "..sTemp,"WHISPER",nil,sender)
 		if GGVars.EchoOfficer then sTemp = sON else sTemp = sOFF end
 		SendChatMessage("Officer chat relay is: "..sTemp,"WHISPER",nil,sender)
+		if GGVars.ShowNewRelayMessages then sTemp = sON else sTemp = sOFF end
+		SendChatMessage("Relay Change Notification is: "..sTemp,"WHISPER",nil,sender)
 		if GGVars.Startdelay then sTemp = GGVars.Startdelay else sTemp = sNOTSET end
 		SendChatMessage("The Startdelay is: "..sTemp,"WHISPER",nil,sender)
 		SendChatMessage("Oldest Version Seen: "..GGlocal.OldestVersion,"WHISPER",nil,sender)
@@ -2035,6 +2052,21 @@ local name, note
 			else
 				self:DCF(false,0)
 			end
+		-- RELAYNOTIFY
+		elseif tCmds[1] == "relaynotify" then
+			if tCmds[2] == "on" and not GGVars.ShowNewRelayMessages then
+				GGVars.ShowNewRelayMessages = true
+				self:DCF("Relay Change Notification is now "..sON,1)
+			elseif tCmds[2] == "off" and GGVars.ShowNewRelayMessages then
+				GGVars.ShowNewRelayMessages = false
+				self:DCF("Relay Change Notification is now "..sOFF,1)
+			elseif tCmds[2] == "off" and not GGVars.ShowNewRelayMessages
+			  or tCmds[2] == "on" and GGVars.ShowNewRelayMessages
+			  then
+				self:DCF("Relay Change Notification",-1)
+			else
+				self:DCF(false,0)
+			end
 		-- FORCE
 		elseif tCmds[1] == "force" then
 			local sendToChannel = true
@@ -2137,6 +2169,8 @@ local name, note
 			self:DCF("Guild chat relay is: "..sTemp,1)
 			if GGVars.EchoOfficer then sTemp = sON else sTemp = sOFF end
 			self:DCF("Officer chat relay is: "..sTemp,1)
+			if GGVars.ShowNewRelayMessages then sTemp = sON else sTemp = sOFF end
+			self:DCF("Relay Change Notification is: "..sTemp,1)
 			if GGVars.Channel then sTemp = cColors.cWhite..GGVars.Channel else sTemp = sNOTSET end
 			self:DCF("The channel is: "..sTemp,1)
 			if GGVars.Startdelay then sTemp = cColors.cWhite..GGVars.Startdelay else sTemp = sNOTSET end
@@ -2206,6 +2240,8 @@ local name, note
 			self:DCF(sPre.."gchat "..sA..sOnOff..sZ)
 			self:DCF("The turn officer chat on or off:")
 			self:DCF(sPre.."ochat "..sA..sOnOff..sZ)
+			self:DCF("The turn relay change notification on or off:")
+			self:DCF(sPre.."relaynotify "..sA..sOnOff..sZ)
 			self:DCF("The set or change the hidden channel used by this addon:")
 			self:DCF(sPre.."channel "..sA.."MY_CHANNEL"..sZ)
 			self:DCF("To view your settings:")
@@ -2216,6 +2252,7 @@ local name, note
 		elseif tCmds[1] == "stackdump" then
 			self:DCF("stackdump created. Please email your guild2guild saved variables file to dbeleznay@shaw.ca.",1)
 			table.insert(GGVars.debugStack,self:Guild2Guild_Clone(GGlocal.debugStack))
+			GGVars.debugAddOns = self:Guild2Guild_GetAddOns()
 		-- DEFAULT
 		else
 			self:DCF("Type "..cColors.cWhite.."/g2g help"..cColors.cSilver.." for a list of commands.",1)
@@ -2227,6 +2264,53 @@ local name, note
 		¤¤¤ Accessory Functions ¤¤¤
 		¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤
 ]]--
+
+-------------------------------------------------------------------------------
+-- Guild2Guild_GetAddOns - return a list of addons that are loaded
+-------------------------------------------------------------------------------
+	Guild2Guild_GetAddOns = function (self)
+		local addlist = ""
+		for i = 1, GetNumAddOns() do
+			local name, title, notes, enabled, loadable, reason, security = GetAddOnInfo(i)
+
+			local loaded = IsAddOnLoaded(i)
+			if (loaded) then
+				if not name then name = "Anonymous" end
+				name = name:gsub("[^a-zA-Z0-9]+", "")
+				local version = GetAddOnMetadata(i, "Version")
+				local class = getglobal(name)
+				if not class or type(class)~='table' then class = getglobal(name:lower()) end
+				if not class or type(class)~='table' then class = getglobal(name:sub(1,1):upper()..name:sub(2):lower()) end
+				if not class or type(class)~='table' then class = getglobal(name:upper()) end
+				if class and type(class)=='table' then
+					if (class.version) then
+						version = class.version
+					elseif (class.Version) then
+						version = class.Version
+					elseif (class.VERSION) then
+						version = class.VERSION
+					end
+				end
+				local const = getglobal(name:upper().."_VERSION")
+				if (const) then version = const end
+
+				if type(version)=='table' then
+					version = table.concat(version,":")
+				end
+
+				if (version) then
+					addlist = addlist.."  "..name..", v"..version.."\n"
+				else
+					addlist = addlist.."  "..name.."\n"
+				end
+			end
+		end
+		return addlist
+	end,
+
+-------------------------------------------------------------------------------
+-- AddStackMessage - Adds a debug message to the stack
+-------------------------------------------------------------------------------
 
 	AddStackMessage = function(self,sMsg)
 		if (not (self.Initialized)) then return end
