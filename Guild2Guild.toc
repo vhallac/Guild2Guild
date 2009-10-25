@@ -1,8 +1,8 @@
-## Interface: 30100
+## Interface: 30200
 ## Title: Guild2Guild |cff007fffupdated by Durthos|r
-## Version: 7.5.8
+## Version: 7.5.9
 ## Author: Durthos <dbeleznay@shaw.ca> of Proudmoore
 ## Notes: Transmits messages between guilds using guild chat (or officer chat).
 ## SavedVariablesPerCharacter: Guild2Guild_Vars
-Guild2Guild.xml
 ChatThrottleLib\ChatThrottleLib.xml
+Guild2Guild.xml

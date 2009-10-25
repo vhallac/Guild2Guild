@@ -366,7 +366,35 @@ function ChatThrottleLib:Enqueue(prioname, pipename, msg)
 	self.bQueueing = true
 end
 
+function ChatThrottleLib:ClearPipe (pipename)
+    if not self.bQueueing then
+      return
+    end
 
+    local queuing = false
+    for name, Prio in pairs(self.Prio) do
+      local pipe = Prio.ByName[pipename]
+	  if pipe~= nil then
+
+        local numMsgs = select("#", pipe);
+        for i = 1, numMsgs do
+          DelMsg(pipe[i])
+        end
+
+        Prio.Ring:Remove(pipe)
+        Prio.ByName[pipe.name] = nil
+        DelPipe(pipe)
+        if table.getn(Prio.ByName) > 0 then
+          queuing = true
+        end
+      end
+    end
+    self.bQueueing = queuing
+end
+
+function ChatThrottleLib:PipeName (prefix, chattype, destination)
+    return (prefix..(chattype or "SAY")..(destination or ""))
+end
 
 function ChatThrottleLib:SendChatMessage(prio, prefix,   text, chattype, language, destination, queueName)
 	if not self or not prio or not prefix or not text or not self.Prio[prio] then

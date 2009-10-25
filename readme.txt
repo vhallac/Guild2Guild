@@ -1,5 +1,5 @@
 いいいいいいいいいいいいいいいいいいいいいいいいいいいいいいいいいいいい
-Guild2Guild v7.5.8 - Updated by Durthos of Proudmoore - dbeleznay@shaw.ca
+Guild2Guild v7.5.9 - Updated by Durthos of Proudmoore - dbeleznay@shaw.ca
 Modified by Tassleoff
 Originally by Elviso of Mug'Thol - elviso@kenman.net
 いいいいいいいいいいいいいいいいいいいいいいいいいいいいいいいいいいいい
@@ -116,6 +116,10 @@ You are free to copy, distribute, display, and perform these addons and to make 
 All World or Warcraft game related content and images are the property of Blizzard Entertainment, Inc. and protected by U.S. and international copyright laws. The Addon (code and supporting files) is property of Durthos of Proudmoore and protected by U.S. and international copyright laws. 
 
 == Changelog ==
+7.5.9
+- fixed error caused when the person you are talking to disconnects, but you still have messages for them
+- fixed error message when you turn on Blizzard Class Colouring in the chat frame
+	
 7.5.8
 - shortened the inter-guild message when a player earns an achievement
 
