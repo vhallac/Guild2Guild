@@ -1,5 +1,5 @@
 いいいいいいいいいいいいいいいいいいいいいいいいいいいいいいいいいいいい
-Guild2Guild v7.4.8 - Updated by Durthos of Proudmoore - dbeleznay@shaw.ca
+Guild2Guild v7.4.9 - Updated by Durthos of Proudmoore - dbeleznay@shaw.ca
 Modified by Tassleoff
 Originally by Elviso of Mug'Thol - elviso@kenman.net
 いいいいいいいいいいいいいいいいいいいいいいいいいいいいいいいいいいいい
@@ -71,15 +71,19 @@ To turn this addon on or off:
 
   /g2g [on|off]
 
-The turn guild chat on or off:
+To turn guild chat on or off:
 
   /g2g gchat [on|off]
 
-The turn officer chat on or off:
+To turn officer chat on or off:
 
   /g2g ochat [on|off]
+  
+To turn relay change notification on or off:
 
-The set or change the hidden synchronization channel used by this addon:
+  /g2g relaynotify [on|off]
+
+To set or change the hidden synchronization channel used by this addon:
 
   /g2g channel [MY_CHANNEL]
 
@@ -92,6 +96,10 @@ snapshot of the last few minutes of guild2guild activity. If you mail me your gu
 variables file when you log out then I will be better able to debug what went wrong.)
 
 == Changelog ==
+7.4.9
+- Updated to current TOC
+- added the ability to disable notification messages when the relay changes
+
 7.4.8
 - added the ability for a relay to step down if there are others available (passive mode)
 - /report shows the complete list of potential relays, and their versions

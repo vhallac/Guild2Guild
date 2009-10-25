@@ -15,6 +15,10 @@
 	* maybe some UI
 
 	Changelog:
+	7.4.9
+	- Updated to current TOC
+	- added the ability to disable notification messages
+	
 	7.4.8
 	- ability for a relay to step down if there are others available (passive mode)
 	- /report shows the complete list of potential relays, and their versions
@@ -147,8 +151,8 @@ G2G_DEMOTE	= string.format(ERR_GUILD_DEMOTE_SSS, "(.+)", "(.+)", "(.+)")
 ]]--	 
 
 Guild2Guild = {
-	Version = "7.4.8",
-	VerNum = 748,
+	Version = "7.4.9",
+	VerNum = 749,
 	Loaded = false,
 	Initialized = false,
 	Finalizing = false,
@@ -1280,6 +1284,7 @@ Guild2Guild = {
 ----------------------------
 	UpdateRelayInfo = function(self,guild,sender,version,officer, reintialize, addOnMessage)
 		local GGlocal = Guild2Guild.LocalVars
+		local GGVars = Guild2Guild_Vars	
 
 		if (addOnMessage) then
 			GGlocal.VerifiedGuilds[guild] = true
@@ -1297,7 +1302,7 @@ Guild2Guild = {
 			return
 		end
 			
-		if (GGlocal.AlliedGuilds == nil or (GGlocal.AlliedGuilds[guild] ~= nil and GGlocal.AlliedGuilds[guild])) then
+		if (GGVars.ShowNewRelayMessages and (GGlocal.AlliedGuilds == nil or (GGlocal.AlliedGuilds[guild] ~= nil and GGlocal.AlliedGuilds[guild]))) then
 			if (GGlocal.Guilds[guild] ~= nil and GGlocal.Guilds[guild][1] ~= sender) then
 				self:DCF(guild.." just elected a new relay: ".. sender,1)
 			end
@@ -1775,6 +1780,8 @@ Guild2Guild = {
 		SendChatMessage("Guild chat relay is: "..sTemp,"WHISPER",nil,sender)
 		if GGVars.EchoOfficer then sTemp = sON else sTemp = sOFF end
 		SendChatMessage("Officer chat relay is: "..sTemp,"WHISPER",nil,sender)
+		if GGVars.ShowNewRelayMessages then sTemp = sON else sTemp = sOFF end
+		SendChatMessage("Relay Change Notification is: "..sTemp,"WHISPER",nil,sender)
 		if GGVars.Startdelay then sTemp = GGVars.Startdelay else sTemp = sNOTSET end
 		SendChatMessage("The Startdelay is: "..sTemp,"WHISPER",nil,sender)
 		SendChatMessage("Oldest Version Seen: "..GGlocal.OldestVersion,"WHISPER",nil,sender)
@@ -1897,6 +1904,21 @@ Guild2Guild = {
 			else
 				self:DCF(false,0)
 			end
+		-- RELAYNOTIFY
+		elseif tCmds[1] == "relaynotify" then
+			if tCmds[2] == "on" and not GGVars.ShowNewRelayMessages then
+				GGVars.ShowNewRelayMessages = true
+				self:DCF("Relay Change Notification is now "..sON,1)
+			elseif tCmds[2] == "off" and GGVars.ShowNewRelayMessages then
+				GGVars.ShowNewRelayMessages = false
+				self:DCF("Relay Change Notification is now "..sOFF,1)	 
+			elseif tCmds[2] == "off" and not GGVars.ShowNewRelayMessages
+			  or tCmds[2] == "on" and GGVars.ShowNewRelayMessages
+			  then
+				self:DCF("Relay Change Notification",-1)
+			else
+				self:DCF(false,0)
+			end	   			
 		-- FORCE
 		elseif tCmds[1] == "force" then
 			local sendToChannel = true
@@ -1999,6 +2021,8 @@ Guild2Guild = {
 			self:DCF("Guild chat relay is: "..sTemp,1)
 			if GGVars.EchoOfficer then sTemp = sON else sTemp = sOFF end
 			self:DCF("Officer chat relay is: "..sTemp,1)
+			if GGVars.ShowNewRelayMessages then sTemp = sON else sTemp = sOFF end
+			self:DCF("Relay Change Notification is: "..sTemp,1)
 			if GGVars.Channel then sTemp = cColors.cWhite..GGVars.Channel else sTemp = sNOTSET end
 			self:DCF("The channel is: "..sTemp,1)
 			if GGVars.Startdelay then sTemp = cColors.cWhite..GGVars.Startdelay else sTemp = sNOTSET end
@@ -2067,7 +2091,9 @@ Guild2Guild = {
 			self:DCF("The turn guild chat on or off:")
 			self:DCF(sPre.."gchat "..sA..sOnOff..sZ)
 			self:DCF("The turn officer chat on or off:")
-			self:DCF(sPre.."ochat "..sA..sOnOff..sZ)		
+			self:DCF(sPre.."ochat "..sA..sOnOff..sZ)
+			self:DCF("The turn relay change notification on or off:")
+			self:DCF(sPre.."relaynotify "..sA..sOnOff..sZ)		
 			self:DCF("The set or change the hidden channel used by this addon:")
 			self:DCF(sPre.."channel "..sA.."MY_CHANNEL"..sZ)
 			self:DCF("To view your settings:")
