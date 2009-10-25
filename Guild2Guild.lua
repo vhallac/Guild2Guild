@@ -15,6 +15,16 @@
 	* maybe some UI
 
 	Changelog:
+	7.5.2
+	- initialized chat color properly
+
+	7.5.1
+	- fixed a bug that was still causing duplicate names after relay changes
+
+	7.5.0
+	- Updated to current TOC
+	- fixed up after blizzard changed the chatframe api
+
 	7.4.9
 	- Updated to current TOC
 	- added the ability to disable notification messages
@@ -151,8 +161,8 @@ G2G_DEMOTE	= string.format(ERR_GUILD_DEMOTE_SSS, "(.+)", "(.+)", "(.+)")
 ]]--	 
 
 Guild2Guild = {
-	Version = "7.4.9",
-	VerNum = 749,
+	Version = "7.5.2",
+	VerNum = 752,
 	Loaded = false,
 	Initialized = false,
 	Finalizing = false,
@@ -299,7 +309,7 @@ Guild2Guild = {
 			-- clear out the incorrect guild member notify
 			Guild2Guild_Vars.G2GGuildMemberNotify = nil;
 			-- end clearing out guildmember notify
-						
+
 			Guild2Guild_Vars.debugStack = {}
 			Guild2Guild.LocalVars.OldestVersion = self.VerNum
 			if (Guild2Guild_Vars.Startdelay == false) then
@@ -435,7 +445,7 @@ Guild2Guild = {
 		if ((time() - GGlocal.Magic) < GGVars.Startdelay) then return false end
 		if not GGlocal.GuildInfoInitialized then
 			if (IsInGuild()) then
-				GuildRoster();
+				GuildRoster();   -- calling GuildRoster will force a callback on which should call ParseGuildInfo that will eventually initialize GuildInfo
 			elseif ((time() - GGlocal.Magic) > 90) then 
 				self:Guild2Guild_PrintDEBUG("player not in guild","ReadyToWork")
 				self:DCF(cColors.cRed.."Player is not in a guild:"..cColors.cWhite.."disabling guild2guild.",1)
@@ -763,7 +773,8 @@ Guild2Guild = {
 -- NewChatHandler - used to avoid displaying chat messages sent by Guild2Guild
 ----------------------------
 
-	NewChatHandler = function (event)
+	NewChatHandler = function (self,event,...)
+		local arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11 = ...;
 		-- Use a "return" command to prevent the incoming messsages that we don't want
 		-- from appearing in the chat frame.
 
@@ -802,7 +813,7 @@ Guild2Guild = {
 		end
 
 	-- Call the original ChatFrame_OnEvent function for default handling of the event.
-	G2GOldChatHandler(event);
+	G2GOldChatHandler(self, event, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11);
 
 	end,
 
@@ -1283,6 +1294,7 @@ Guild2Guild = {
 -- UpdateRelayInfo - 
 ----------------------------
 	UpdateRelayInfo = function(self,guild,sender,version,officer, reintialize, addOnMessage)
+		self:Guild2Guild_PrintDEBUG(guild, sender, version, officer, addOnMessage,"UpdateRelayInfo")
 		local GGlocal = Guild2Guild.LocalVars
 		local GGVars = Guild2Guild_Vars	
 
@@ -1302,8 +1314,8 @@ Guild2Guild = {
 			return
 		end
 			
-		if (GGVars.ShowNewRelayMessages and (GGlocal.AlliedGuilds == nil or (GGlocal.AlliedGuilds[guild] ~= nil and GGlocal.AlliedGuilds[guild]))) then
-			if (GGlocal.Guilds[guild] ~= nil and GGlocal.Guilds[guild][1] ~= sender) then
+		if (GGlocal.AlliedGuilds == nil or (GGlocal.AlliedGuilds[guild] ~= nil and GGlocal.AlliedGuilds[guild])) then
+			if (GGVars.ShowNewRelayMessages and (GGlocal.Guilds[guild] ~= nil and GGlocal.Guilds[guild][1] ~= sender)) then
 				self:DCF(guild.." just elected a new relay: ".. sender,1)
 			end
 

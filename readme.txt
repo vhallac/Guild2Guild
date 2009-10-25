@@ -1,5 +1,5 @@
 いいいいいいいいいいいいいいいいいいいいいいいいいいいいいいいいいいいい
-Guild2Guild v7.4.9 - Updated by Durthos of Proudmoore - dbeleznay@shaw.ca
+Guild2Guild v7.5.0 - Updated by Durthos of Proudmoore - dbeleznay@shaw.ca
 Modified by Tassleoff
 Originally by Elviso of Mug'Thol - elviso@kenman.net
 いいいいいいいいいいいいいいいいいいいいいいいいいいいいいいいいいいいい
@@ -96,6 +96,16 @@ snapshot of the last few minutes of guild2guild activity. If you mail me your gu
 variables file when you log out then I will be better able to debug what went wrong.)
 
 == Changelog ==
+7.5.2
+	- initialized chat color properly
+	
+7.5.1
+- fixed a bug that was still causing duplicate names after relay changes
+	
+7.5.0
+- Updated to current TOC
+- fixed up after blizzard changed the chatframe api
+	
 7.4.9
 - Updated to current TOC
 - added the ability to disable notification messages when the relay changes
