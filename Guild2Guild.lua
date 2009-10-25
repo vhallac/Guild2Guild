@@ -15,6 +15,17 @@
 	* maybe some UI
 
 	Changelog:
+	7.5.6
+	- fixed a few minor bugs related to achieviemnts
+	- achievments are no longer broadcasted unless they come from someone in your guild.
+	- achievment messages are now displaed in the correct window
+	
+	7.5.5
+	- achievements are now propagated across guilds
+	- fixed an extra space that was being introduced when in guild2guild messages
+	- added a 'silent' mode which allows a player to not see any guild2guild messages
+	- the addon now automatically shuts down if the password is set incorrectly
+
 	7.5.4
 	- updated for current TOC
 	
@@ -170,8 +181,8 @@ G2G_DEMOTE	= string.format(ERR_GUILD_DEMOTE_SSS, "(.+)", "(.+)", "(.+)")
 ]]--	 
 
 Guild2Guild = {
-	Version = "7.5.4",
-	VerNum = 754,
+	Version = "7.5.6",
+	VerNum = 756,
 	Loaded = false,
 	Initialized = false,
 	Finalizing = false,
@@ -225,7 +236,8 @@ Guild2Guild = {
 		ignores = {},
 		channelRoster = {},
 		localRank = 0,
-		versions = {}
+		versions = {},
+		failedAttempts = 0
 	},
 
 --[[ 		
@@ -280,7 +292,7 @@ Guild2Guild = {
 		GGlocal.channelRoster = {}
 		GGlocal.localRank = 0
 		GGlocal.versions = {}
-		
+		GGlocal.failedAttempts = 0
 	end,
 
 
@@ -418,6 +430,9 @@ Guild2Guild = {
 			Guild2GuildFrame:RegisterEvent("FRIENDLIST_UPDATE")
 			Guild2GuildFrame:RegisterEvent("IGNORELIST_UPDATE")
 			Guild2GuildFrame:RegisterEvent("CHANNEL_ROSTER_UPDATE")
+			Guild2GuildFrame:RegisterEvent("CHAT_MSG_GUILD_ACHIEVEMENT")
+			Guild2GuildFrame:RegisterEvent("CHAT_MSG_ACHIEVEMENT")
+			Guild2GuildFrame:RegisterEvent("CHAT_MSG_CHANNEL_NOTICE")
 		else
 			if GGVars.Debug then self:DCF("Unregister fired.",5,"Event_Manager") end
 			Guild2GuildFrame:UnregisterEvent("CHAT_MSG_CHANNEL")	
@@ -434,6 +449,9 @@ Guild2Guild = {
 			Guild2GuildFrame:UnregisterEvent("FRIENDLIST_UPDATE")
 			Guild2GuildFrame:UnregisterEvent("IGNORELIST_UPDATE")
 			Guild2GuildFrame:UnregisterEvent("CHANNEL_ROSTER_UPDATE")
+			Guild2GuildFrame:UnregisterEvent("CHAT_MSG_GUILD_ACHIEVEMENT")
+			Guild2GuildFrame:UnregisterEvent("CHAT_MSG_ACHIEVEMENT")
+			Guild2GuildFrame:UnregisterEvent("CHAT_MSG_CHANNEL_NOTICE")
 		end
 		self:Hook_UI()
 	end,
@@ -637,7 +655,7 @@ Guild2Guild = {
 		end
 		SetGuildRosterShowOffline(showOfflineTemp);
 		
-		self:Guild2Guild_PrintDEBUG("final",GGlocal.AlliedGuilds, GGlocal.OfficerRank,"ParseGuildInfo")
+		self:Guild2Guild_PrintDEBUG("final",GGlocal.AlliedGuilds, GGlocal.OfficerRank, Guild2Guild_Vars.Channel, Guild2Guild_Vars.Password, "ParseGuildInfo")
 
 --		Guild2GuildFrame:UnregisterEvent("GUILD_ROSTER_UPDATE")
 
@@ -729,7 +747,9 @@ Guild2Guild = {
 		GGlocal.channelRoster = {}
 		for id=1, count, 1 do
 			name = GetChannelRosterInfo(channelID, id)
-			GGlocal.channelRoster[name] = true
+			if (name ~= nil) then
+				GGlocal.channelRoster[name] = true
+			end
 		end
 		Guild2GuildFrame:UnregisterEvent("CHANNEL_ROSTER_UPDATE")
 	end,
@@ -783,47 +803,59 @@ Guild2Guild = {
 ----------------------------
 
 	NewChatHandler = function (self,event,...)
-		local incMsg, sender, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11 = ...;
+		local msg, realSender, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11 = ...;
+		
+		-- use the gloabal arg1 and arg2 so that programs like Prat and Phanxchat work as expected.
+		arg1 = msg;
+		arg2 = realSender;
+		
 		-- Use a "return" command to prevent the incoming messsages that we don't want
 		-- from appearing in the chat frame.
 
 		if (event == "CHAT_MSG_WHISPER") then
-			if (incMsg and incMsg ~= nil) then
-				if (string.sub(incMsg,1,3) == "G2G") then
+			if (arg1 and arg1 ~= nil) then
+				if (string.sub(arg1,1,3) == "G2G") then
 					return;
 				end
 			end
 
 		elseif (event == "CHAT_MSG_WHISPER_INFORM") then
-			if (incMsg and incMsg ~= nil) then
-				if (string.sub(incMsg,1,3) == "G2G") then
+			if (arg1 and arg1 ~= nil) then
+				if (string.sub(arg1,1,3) == "G2G") then
 					return;
 				end
 			end
   		elseif event == "CHAT_MSG_CHANNEL" and arg9 and arg9 ~= nil and strlower(arg9) == strlower(Guild2Guild_Vars.Channel) then
 			return;
   		elseif event == "CHAT_MSG_GUILD" or event == "CHAT_MSG_OFFICER" then
---			Guild2Guild.Guild2Guild_PrintDEBUG(Guild2Guild,"inc", sender, Guild2Guild.LocalVars.Leader, "NewChatHandler1")
+--			Guild2Guild.Guild2Guild_PrintDEBUG(Guild2Guild,"inc", arg2, Guild2Guild.LocalVars.Leader, "NewChatHandler1")
 
-		  	if (sender and sender ~=nil and Guild2Guild.LocalVars.Leader and Guild2Guild.LocalVars.Leader ~= nil and sender == Guild2Guild.LocalVars.Leader) then
-				if (incMsg and incMsg ~= nil) then
-					if (string.sub(incMsg,1,1) == "[") then
---						Guild2Guild.Guild2Guild_PrintDEBUG(Guild2Guild,"inc", incMsg,sender,"NewChatHandler2")
+		  	if (arg2 and arg2 ~=nil and Guild2Guild.LocalVars.Leader and Guild2Guild.LocalVars.Leader ~= nil and arg2 == Guild2Guild.LocalVars.Leader) then
+				if (arg1 and arg1 ~= nil) then
+					if (string.sub(arg1,1,1) == "[") then
+--						Guild2Guild.Guild2Guild_PrintDEBUG(Guild2Guild,"inc", arg1,arg2,"NewChatHandler2")
+
 						local found, realSender, msg
-						found,_,realSender,msg = string.find(incMsg, "%[([^%]]*)%]:(.*)")
+						found,_,realSender,msg = string.find(arg1, "%[([^%]]*)%]: (.*)")
 						if (found) then
+							if (Guild2Guild_Vars.Silent) then
+								Guild2Guild.Guild2Guild_PrintDEBUG(Guild2Guild,"squelch", arg1,arg2,"NewChatHandler2")
+								return
+							end
+
 							arg1 = Guild2Guild_Vars.color..msg
 							arg2 = realSender -- to see if setting the global variable helps
 --							Guild2Guild.Guild2Guild_PrintDEBUG(Guild2Guild,"disp", arg1,realSender,arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11,"NewChatHandler3")
 						end
 						
-						if (Guild2Guild.LocalVars.ignores[sender]) then
+						if (Guild2Guild.LocalVars.ignores[arg2]) then
 							return
 						end
 					end			
 				end
 			end
 		end
+--		Guild2Guild.Guild2Guild_PrintDEBUG(Guild2Guild,"inc", event, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11)
 
 	-- Call the original ChatFrame_OnEvent function for default handling of the event.
 	G2GOldChatHandler(self, event, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11);
@@ -1002,11 +1034,13 @@ Guild2Guild = {
 -- OnEvent - Main Event Handler
 ----------------------------
 
-	OnEvent = function(self,event,arg1,arg2,arg3,arg4,arg5,arg6,arg7,arg8,arg9)
+	OnEvent = function(self,event,arg1,arg2,arg3,arg4,arg5,arg6,arg7,arg8,arg9,arg10,arg11)
 --		if Guild2Guild_Vars and Guild2Guild_Vars.Debug then self:DCF("\""..event.."\" fired, entry: "..arg1,5,"OnEvent") end
 
---		self:Guild2Guild_PrintDEBUG(event,arg1,"OnEvent") 
-
+--		if (event ~= "CHAT_MSG_ADDON") then
+--			self:Guild2Guild_PrintDEBUG(event,arg1,"OnEvent") 
+--		end
+		
 		if (event == "ADDON_LOADED" and arg1 == "Guild2Guild") then
 			self.Loaded = true
 			if Guild2Guild_Vars and Guild2Guild_Vars.Debug then self:DCF("ADDON_LOADED",5,"OnEvent") end
@@ -1044,10 +1078,22 @@ Guild2Guild = {
 			return
 		end
 
-		if not self:ReadyToWork() then return end;
-
-		local GGlocal = Guild2Guild.LocalVars
 		local cColors = Guild2Guild.tColors
+		local GGlocal = Guild2Guild.LocalVars
+
+		if (event == "CHAT_MSG_CHANNEL_NOTICE" and arg1 == "WRONG_PASSWORD" and arg9 == GGVars.Channel) then
+			GGlocal.failedAttempts = GGlocal.failedAttempts + 1;
+			self:Guild2Guild_PrintDEBUG(event, GGlocal.failedAttempts, "WRONG_PASSWORD") 
+			
+			if (GGlocal.failedAttempts > 3) then
+				self:Guild2Guild_PrintDEBUG("too many attempts","Ready to work")
+				self:DCF(cColors.cRed.."Channel Password is set incorrectly "..cColors.cWhite.."disabling guild2guild.",1)
+				self:SetActive(false)
+				return
+			end
+		end
+		
+		if not self:ReadyToWork() then return end;
 
 		local guildname = GetGuildInfo("player")
 		if (not (IsInGuild()) or guildname == nil) then
@@ -1112,6 +1158,9 @@ Guild2Guild = {
 
 		elseif (event == "CHAT_MSG_SYSTEM") then
 			self:HandleChatMessageSystem(arg1)
+			
+		elseif (event == "CHAT_MSG_GUILD_ACHIEVEMENT" or (event == "CHAT_MSG_ACHIEVEMENT" and arg2 == UnitName("player"))) then
+			self:HandleChatMessageAchievement(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11)
 	
 		elseif (event == "CHAT_MSG_GUILD" and GGVars.EchoGuild)
 			or (event == "CHAT_MSG_OFFICER" and GGVars.EchoOfficer) then
@@ -1240,7 +1289,7 @@ Guild2Guild = {
 		
 		local officerBonus = 200
 		
-		if (GGVars.Passive) then
+		if (GGVars.Passive or GGVars.Silent) then
 			officerBonus = 100
 		elseif (GGlocal.PlayerIsOfficer) then
 			officerBonus = 900
@@ -1490,6 +1539,16 @@ Guild2Guild = {
 		
 	end,
 
+----------------------------
+-- HandleChatMessageAchievement - 
+----------------------------
+	HandleChatMessageAchievement = function(self, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11)
+		self:Guild2Guild_PrintDEBUG("HandleChatMessageAchievement", arg1, arg2)
+
+		local event;
+		event = "A"
+		self:SendOutgoingAuxMessage(arg2,event, arg1);
+	end,
 
 ----------------------------
 -- SendOutgoingAuxMessage - 
@@ -1623,6 +1682,10 @@ Guild2Guild = {
 		local GGlocal = Guild2Guild.LocalVars
 		local GGVars = Guild2Guild_Vars	
 		
+		if (GGVars.Silent) then
+			return
+		end
+		
 		found,_, event, player, guild, rest = string.find(message,"(.);([^;]-);([^;]-);(.*)")
 		
 		self:Guild2Guild_PrintDEBUG("received",event,player, guild, rest, "HandleGuildAuxMessage")
@@ -1644,7 +1707,15 @@ Guild2Guild = {
 		elseif (event == "D") then
 			local promoter, rank;
 			_, _, promoter, rank = string.find (rest, "([^;]-);(.*)")
-			sMsg = string.format(ERR_GUILD_DEMOTE_SSS, promoter, player, rank).." ("..guild..")"			
+			sMsg = string.format(ERR_GUILD_DEMOTE_SSS, promoter, player, rank).." ("..guild..")"		
+		elseif (event == "A") then
+			self:Guild2Guild_PrintDEBUG("displaying ",event,player, guild, rest, "HandleGuildAuxMessage")
+			for i=1, NUM_CHAT_WINDOWS do
+				chatFrame = getglobal("ChatFrame"..i);
+				if (Guild2Guild.IsChatTypeVisible("GUILD_ACHIEVEMENT", chatFrame)) then
+					ChatFrame_OnEvent(chatFrame, "CHAT_MSG_GUILD_ACHIEVEMENT",  rest .." ("..guild..")", player, "", "", player, "", 0, 0, "", 0, 172);
+				end
+			end
 		end
 		
 		if (sMsg == nil) then
@@ -1673,7 +1744,7 @@ Guild2Guild = {
 		local GGlocal = Guild2Guild.LocalVars
 		local GGVars = Guild2Guild_Vars	
 
---		self:Guild2Guild_PrintDEBUG("test",message, sender, "HandleIncomingGuildMessage")
+--		self:Guild2Guild_PrintDEBUG("inc:",message, sender, "HandleIncomingGuildMessage")
 
 		if (string.find(message,"G2GOFF:12345")==1) then
 			self:DCF("Guild2Guild shutting down! Requested by "..sender,1)
@@ -1886,6 +1957,26 @@ Guild2Guild = {
 			end
 			self:DCF("Passive mode is now "..sTemp,1)
 			self:CalculateRank()
+		-- SILENT
+		elseif tCmds[1] == "silent" then
+			if tCmds[2] then
+				if tCmds[2] == "on" then
+					GGVars.Silent = true
+				elseif tCmds[2] == "off" then
+					GGVars.Silent = false
+				else
+					self:DCF(false,0)
+					return
+				end
+			else
+				GGVars.Silent = not(GGVars.Silent)
+			end
+			local sTemp = sOFF
+			if GGVars.Silent then
+				sTemp = sON
+			end
+			self:DCF("Silent mode is now "..sTemp,1)
+			self:CalculateRank()			
 				  
 		-- CHANNEL
 		elseif tCmds[1] == "channel" then
@@ -1992,6 +2083,8 @@ Guild2Guild = {
 			self:DCF("Version Number: "..self.Version,1)
 			if GGVars.Passive then sTemp = sON else sTemp = sOFF end
 			self:DCF("Passive mode is: "..sTemp,1)
+			if GGVars.Silent then sTemp = sON else sTemp = sOFF end
+			self:DCF("Silent mode is: "..sTemp,1)
 			for guild, relay in pairs(GGlocal.Guilds) do
 				if relay[3] then sTemp = "true" else sTemp = "false" end
 --				self:Guild2Guild_PrintDEBUG(guild,relay[1],relay[2],relay[3],sTemp,"report")
@@ -2113,13 +2206,15 @@ Guild2Guild = {
 			self:DCF(sPre..sA..sOnOff..sZ)
 			self:DCF("To turn passive mode on or off:")
 			self:DCF(sPre.."passive "..sOnOff..sZ)	
-			self:DCF("The turn guild chat on or off:")
+			self:DCF("To turn silent mode on or off:")
+			self:DCF(sPre.."silent "..sOnOff..sZ)	
+			self:DCF("To turn guild chat on or off:")
 			self:DCF(sPre.."gchat "..sA..sOnOff..sZ)
-			self:DCF("The turn officer chat on or off:")
+			self:DCF("To turn officer chat on or off:")
 			self:DCF(sPre.."ochat "..sA..sOnOff..sZ)
-			self:DCF("The turn relay change notification on or off:")
+			self:DCF("To turn relay change notification on or off:")
 			self:DCF(sPre.."relaynotify "..sA..sOnOff..sZ)		
-			self:DCF("The set or change the hidden channel used by this addon:")
+			self:DCF("To set or change the hidden channel used by this addon:")
 			self:DCF(sPre.."channel "..sA.."MY_CHANNEL"..sZ)
 			self:DCF("To view your settings:")
 			self:DCF(sPre.."report ") 
@@ -2131,6 +2226,15 @@ Guild2Guild = {
 			table.insert(GGVars.debugStack,self:Guild2Guild_Clone(GGlocal.debugStack))
 			GGVars.debugAddOns = self:Guild2Guild_GetAddOns()
 		-- DEFAULT
+		elseif tCmds[1] == "test" then
+
+		local event = "A";
+		local player = "Durthos";
+		local extra = "|Hplayer:Durthos|h[Durthos]|h has earned the achievement |cffffff00|Hachievement:768:030000000021A890:1:6:10:9:4294967295:4294967295:4294967295:4294967295|h[Explore Tirisfal Glades]|h|r!";
+		local sMsg = event..";"..player..";"..GetGuildInfo("player")..";"..extra
+		
+		self:HandleGuildAuxMessage(sMsg);
+		
 		else
 			self:DCF("Type "..cColors.cWhite.."/g2g help"..cColors.cSilver.." for a list of commands.",1)
 		end

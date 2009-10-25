@@ -1,5 +1,5 @@
 いいいいいいいいいいいいいいいいいいいいいいいいいいいいいいいいいいいい
-Guild2Guild v7.5.4 - Updated by Durthos of Proudmoore - dbeleznay@shaw.ca
+Guild2Guild v7.5.6 - Updated by Durthos of Proudmoore - dbeleznay@shaw.ca
 Modified by Tassleoff
 Originally by Elviso of Mug'Thol - elviso@kenman.net
 いいいいいいいいいいいいいいいいいいいいいいいいいいいいいいいいいいいい
@@ -83,6 +83,14 @@ To turn relay change notification on or off:
 
   /g2g relaynotify [on|off]
 
+To turn on passive mode (for slow connections - be the last person to be elected relay)
+
+  /g2g passive [on|off]
+
+To turn on silent mode (block all incoming messages from the allied guilds)
+
+  /g2g silent [on|off]
+
 To set or change the hidden synchronization channel used by this addon:
 
   /g2g channel [MY_CHANNEL]
@@ -95,7 +103,31 @@ To view your settings:
 snapshot of the last few minutes of guild2guild activity. If you mail me your guild2guild saved 
 variables file when you log out then I will be better able to debug what went wrong.)
 
+== ADDON LICENSE ==
+
+You are free to copy, distribute, display, and perform these addons and to make derivative addons under the following conditions: 
+--Attribution. You must attribute all add ons in the manner specified by Durthos of Proudmoore. 
+--Noncommercial. You may not use these add ons for commercial purposes. 
+--Share Alike. If you alter, transform, or build upon these add ons, you may distribute the resulting add on only under a license identical to this one. 
+--For any reuse or distribution, you must make clear to others the license terms of these add ons. Any of these conditions can be waived if you get permission from Durthos of Proudmoore. Your fair use and other rights are in no way affected by the above.
+
+== COPYRIGHT ==
+
+All World or Warcraft game related content and images are the property of Blizzard Entertainment, Inc. and protected by U.S. and international copyright laws. The Addon (code and supporting files) is property of Durthos of Proudmoore and protected by U.S. and international copyright laws. 
+
 == Changelog ==
+7.5.6
+- fixed a few minor bugs related to achieviemnts
+- achievments are no longer broadcasted unless they come from someone in your guild.
+- achievment messages are now displaed in the correct window
+
+
+7.5.5
+- achievements are now propagated across guilds
+- fixed an extra space that was being introduced when in guild2guild messages
+- added a 'silent' mode which allows a player to not see any guild2guild messages
+- the addon now automatically shuts down if the password is set incorrectly
+	
 7.5.4
 - updated for current TOC
 	
