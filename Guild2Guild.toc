@@ -1,0 +1,7 @@
+## Interface: 20300
+## Title: Guild2Guild |cff007fffupdated by Durthos|r
+## Version: 7.4.8
+## Author: Durthos <dbeleznay@shaw.ca> of Proudmoore
+## Notes: Transmits messages between guilds using guild chat (or officer chat).
+## SavedVariablesPerCharacter: Guild2Guild_Vars
+Guild2Guild.xml

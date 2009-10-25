@@ -1,0 +1,248 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.blizzard.com/wow/ui/">
+
+    <Script file="Gui.lua"/>
+
+    <!-- Font for the Guild2Guild interface -->
+    <FontString name="Guild2Guild_title_font" font="Fonts\FRIZQT__.TTF" virtual="true">
+        <FontHeight>
+            <AbsValue val="9"/>
+        </FontHeight>
+        <Color r="0.9" g="0.82" b="0.0"/>
+    </FontString>
+
+    <!-- Font for the Guild2Guild queue -->
+    <FontString name="Guild2Guild_queue_font" inherits="GameFontNormalSmall" virtual="true">
+        <Color r="1.0" g="1.0" b="1.0"/>
+    </FontString>
+
+    <!-- The Guild2Guild monitor -->
+    <Frame name="Guild2GuildGuiFrame" frameStrata="LOW" enableMouse="true" movable="true" parent="UIParent" hidden="true">
+        <Anchors>
+            <Anchor point="TOPLEFT" relativeTo="UIParent" relativePoint="LEFT"/>
+        </Anchors>
+        <Size>
+            <AbsDimension x="244" y="126"/>
+        </Size>
+        <Backdrop bgFile="Interface\Tooltips\UI-Tooltip-Background" edgeFile="Interface\Tooltips\UI-Tooltip-Border" tile="true">
+            <EdgeSize>
+                <AbsValue val="16"/>
+            </EdgeSize>
+            <TileSize>
+                <AbsValue val="16"/>
+            </TileSize>
+            <BackgroundInsets>
+                <AbsInset left="5" right="5" top="5" bottom="5"/>
+            </BackgroundInsets>
+        </Backdrop>
+        <TitleRegion setAllPoints="true"/>
+        <Layers>
+            <Layer level="OVERLAY">
+                <FontString name="Guild2GuildStatusText" inherits="Guild2Guild_title_font" text="-QUEUE-">
+                    <Anchors>
+                        <Anchor point="TOPLEFT">
+                            <Offset>
+                                <AbsDimension x="82" y="-6"/>
+                            </Offset>
+                        </Anchor>
+                    </Anchors>
+                </FontString>
+            </Layer>
+        </Layers>
+        <Frames>
+            <!-- control buttons at top of window -->
+	    <Button name="Guild2GuildOptionsButton">
+                <Size>
+                    <AbsDimension x="16" y="16"/>
+                </Size>
+		<Anchors>
+                    <Anchor point="TOPLEFT">
+                        <Offset>
+                            <AbsDimension x="4" y="-4"/>
+                        </Offset>
+                    </Anchor>
+                </Anchors>
+                <Scripts>
+			<OnLoad>
+				this:RegisterForClicks("LeftButtonUp", "RightButtonUp");
+			</OnLoad>
+                    <OnClick>
+			if ( arg1 == "LeftButton" ) then
+				Guild2GuildGui_ToggleDropDown();
+			else
+				Guild2GuildGui_ToggleDropDown();
+			end
+                    </OnClick>
+                </Scripts>
+                <NormalTexture file="Interface\Buttons\UI-PlusButton-Up"/>
+                <PushedTexture file="Interface\Buttons\UI-PlusButton-Down"/>
+                <HighlightTexture file="Interface\Buttons\UI-Panel-MinimizeButton-Highlight" alphaMode="ADD"/>
+            </Button>
+
+            <Button name="Guild2GuildCastButton" inherits="OptionsButtonTemplate,SecureActionButtonTemplate" text="-CAST-">
+		<Size>
+                    <AbsDimension x="60" y="16"/>
+                </Size>
+		<Anchors>
+                    <Anchor point="TOPLEFT" relativeTo="Guild2GuildOptionsButton" relativePoint="TOPRIGHT">
+                        <Offset>
+                            <AbsDimension x="1" y="0"/>
+                        </Offset>
+                    </Anchor>
+                </Anchors>
+                
+                <Scripts>
+					<OnLoad>
+						this:SetAttribute("type", "macro");
+						this:SetScript("PreClick", function(self, button, down)
+						if InCombatLockdown() then return end
+						local unit, spell, i, wcwtlt = Guild2Guild_cast();
+						if (not unit and not spell) then
+						this:SetAttribute("macrotext", "")
+						return
+						end
+						if (unit and wcwtlt) then
+						local text = string.format("/target %s\n/cast %s\n/targetlasttarget", unit, spell)
+                 				this:SetAttribute("macrotext", text)
+						Guild2Guild_dequeue(i,false);
+						else
+						local text = string.format("/target %s\n/cast %s\n/cleartarget", unit, spell)
+                 				this:SetAttribute("macrotext", text)
+						Guild2Guild_dequeue(i,false);
+						end
+						end)
+						
+					</OnLoad>
+                </Scripts>
+            </Button>
+
+	    
+
+            <Button name="Guild2GuildHideButton">
+                <Size>
+                    <AbsDimension x="16" y="16"/>
+                </Size>
+                <Anchors>
+                    <Anchor point="TOPRIGHT">
+                        <Offset>
+                            <AbsDimension x="-4" y="-4"/>
+                        </Offset>
+                    </Anchor>
+                </Anchors>
+                <Scripts>
+                    <OnEnter>
+                        Guild2GuildGui_ShowTooltip(WCLocale.UI.text.mouseoverHide);
+                    </OnEnter>
+                    <OnLeave>
+                        GameTooltip:Hide();
+                    </OnLeave>
+                    <OnClick>
+                        Guild2GuildGui_ToggleHidden();
+                    </OnClick>
+                </Scripts>
+                <NormalTexture file="Interface\Addons\Guild2Guild\CloseButton-Up"/>
+                <PushedTexture file="Interface\Addons\Guild2Guild\CloseButton-Down"/>
+                <HighlightTexture file="Interface\Buttons\UI-Panel-MinimizeButton-Highlight" alphaMode="ADD"/>
+            </Button>
+
+            <Button name="Guild2GuildMinimizeButton">
+                <Size>
+                    <AbsDimension x="16" y="16"/>
+                </Size>
+                <Anchors>
+                    <Anchor point="TOPRIGHT" relativeTo="Guild2GuildHideButton" relativePoint="TOPLEFT">
+                        <Offset>
+                            <AbsDimension x="-1" y="0"/>
+                        </Offset>
+                    </Anchor>
+                </Anchors>
+                <Scripts>
+                    <OnEnter>
+                        Guild2GuildGui_ShowTooltip(WCLocale.UI.text.mouseoverMinimize);
+                    </OnEnter>
+                    <OnLeave>
+                        GameTooltip:Hide();
+                    </OnLeave>
+                    <OnClick>
+			Guild2GuildGui_ToggleMinimized();			
+                    </OnClick>
+                </Scripts>
+                <NormalTexture file="Interface\Addons\Guild2Guild\MinimizeButton-Up"/>
+                <PushedTexture file="Interface\Addons\Guild2Guild\MinimizeButton-Down"/>
+                <HighlightTexture file="Interface\Buttons\UI-Panel-MinimizeButton-Highlight" alphaMode="ADD"/>
+            </Button>
+
+            <Button name="Guild2GuildClearButton" inherits="OptionsButtonTemplate" text="-CLEAR-">
+                <Size>
+                    <AbsDimension x="60" y="16"/>
+                </Size>
+                <Anchors>
+                    <Anchor point="TOPRIGHT" relativeTo="Guild2GuildMinimizeButton" relativePoint="TOPLEFT">
+                        <Offset>
+                            <AbsDimension x="-1" y="0"/>
+                        </Offset>
+                    </Anchor>
+                </Anchors>
+                <Scripts>
+                    <OnClick>
+                        Guild2Guild_Clear();
+                    </OnClick>
+                </Scripts>
+            </Button>
+
+            <!-- queue display -->
+            <ScrollFrame name="Guild2GuildScrollFrame" inherits="UIPanelScrollFrameTemplate">
+                <Size>
+                    <AbsDimension x="216" y="100"/>
+                </Size>
+                <Anchors>
+                    <Anchor point="TOPLEFT" relativeTo="Guild2GuildGuiFrame">
+                        <Offset>
+                            <AbsDimension x="0" y="-21"/>
+                        </Offset>
+                    </Anchor>
+                </Anchors>
+                <ScrollChild>
+                    <Frame name="Guild2GuildScrollChild">
+                        <Size>
+                            <AbsDimension x="200" y="100"/>
+                        </Size>
+                        <Layers>
+                            <Layer>
+                                <FontString name="Guild2GuildQueueText" inherits="Guild2Guild_queue_font" justifyH="LEFT">
+                                    <Size>
+                                        <AbsDimension x="200" y="0"/>
+                                    </Size>
+                                    <Anchors>
+                                        <Anchor point="TOPLEFT">
+                                            <Offset>
+                                                <AbsDimension x="5" y="0"/>
+                                            </Offset>
+                                        </Anchor>
+                                    </Anchors>
+                                </FontString>
+                            </Layer>
+                        </Layers>
+                    </Frame>
+                </ScrollChild>
+            </ScrollFrame>
+        </Frames>
+        <Scripts>
+            <OnLoad>
+                Guild2GuildGui_OnLoad();
+            </OnLoad>
+            <OnEvent>
+                Guild2GuildGui_OnEvent(event);
+            </OnEvent>
+        </Scripts>
+    </Frame>
+	<Frame name="Guild2GuildGuiDropDown" inherits="UIDropDownMenuTemplate" id="1" hidden="true">
+		<Scripts>
+			<OnLoad>
+				Guild2GuildGuiDropDown_OnLoad();
+			</OnLoad>
+			<OnShow>
+				Guild2GuildGuiDropDown_OnLoad();
+			</OnShow>
+		</Scripts>
+	</Frame>
+</Ui>
