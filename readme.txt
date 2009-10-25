@@ -1,5 +1,5 @@
 いいいいいいいいいいいいいいいいいいいいいいいいいいいいいいいいいいいい
-Guild2Guild v7.5.0 - Updated by Durthos of Proudmoore - dbeleznay@shaw.ca
+Guild2Guild v7.5.3 - Updated by Durthos of Proudmoore - dbeleznay@shaw.ca
 Modified by Tassleoff
 Originally by Elviso of Mug'Thol - elviso@kenman.net
 いいいいいいいいいいいいいいいいいいいいいいいいいいいいいいいいいいいい
@@ -96,8 +96,13 @@ snapshot of the last few minutes of guild2guild activity. If you mail me your gu
 variables file when you log out then I will be better able to debug what went wrong.)
 
 == Changelog ==
+7.5.3
+- added an additional call to set the variable (arg2) for the sender. For the case of addons like Prat and PhanxChat 
+which were incorrectly reading it from the global namespace instead of the passed in arguments. This fixes the bug
+where some users would see messages as coming from the relay instead of from the correct sender
+
 7.5.2
-	- initialized chat color properly
+- initialized chat color properly
 	
 7.5.1
 - fixed a bug that was still causing duplicate names after relay changes

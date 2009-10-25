@@ -15,6 +15,12 @@
 	* maybe some UI
 
 	Changelog:
+	7.5.3
+	- added an additional call to set the variable (arg2) for the sender. For the case of addons like Prat and PhanxChat 
+	which were incorrectly reading it from the global namespace instead of the passed in arguments. This fixes the bug
+	where some users would see messages as coming from the relay instead of from the correct sender
+	- added more useful debugging information
+
 	7.5.2
 	- initialized chat color properly
 
@@ -161,8 +167,8 @@ G2G_DEMOTE	= string.format(ERR_GUILD_DEMOTE_SSS, "(.+)", "(.+)", "(.+)")
 ]]--	 
 
 Guild2Guild = {
-	Version = "7.5.2",
-	VerNum = 752,
+	Version = "7.5.3",
+	VerNum = 753,
 	Loaded = false,
 	Initialized = false,
 	Finalizing = false,
@@ -774,34 +780,38 @@ Guild2Guild = {
 ----------------------------
 
 	NewChatHandler = function (self,event,...)
-		local arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11 = ...;
+		local incMsg, sender, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11 = ...;
 		-- Use a "return" command to prevent the incoming messsages that we don't want
 		-- from appearing in the chat frame.
 
 		if (event == "CHAT_MSG_WHISPER") then
-			if (arg1 and arg1 ~= nil) then
-				if (string.sub(arg1,1,3) == "G2G") then
+			if (incMsg and incMsg ~= nil) then
+				if (string.sub(incMsg,1,3) == "G2G") then
 					return;
 				end
 			end
 
 		elseif (event == "CHAT_MSG_WHISPER_INFORM") then
-			if (arg1 and arg1 ~= nil) then
-				if (string.sub(arg1,1,3) == "G2G") then
+			if (incMsg and incMsg ~= nil) then
+				if (string.sub(incMsg,1,3) == "G2G") then
 					return;
 				end
 			end
   		elseif event == "CHAT_MSG_CHANNEL" and arg9 and arg9 ~= nil and strlower(arg9) == strlower(Guild2Guild_Vars.Channel) then
 			return;
   		elseif event == "CHAT_MSG_GUILD" or event == "CHAT_MSG_OFFICER" then
-		  	if (arg2 and arg2 ~=nil and Guild2Guild.LocalVars.Leader and Guild2Guild.LocalVars.Leader ~= nil and arg2 == Guild2Guild.LocalVars.Leader) then
-				if (arg1 and arg1 ~= nil) then
-					if (string.sub(arg1,1,1) == "[") then
-						local found, sender, msg
-						found,_,sender,msg = string.find(arg1, "%[([^%]]*)%]:(.*)")
+--			Guild2Guild.Guild2Guild_PrintDEBUG(Guild2Guild,"inc", sender, Guild2Guild.LocalVars.Leader, "NewChatHandler1")
+
+		  	if (sender and sender ~=nil and Guild2Guild.LocalVars.Leader and Guild2Guild.LocalVars.Leader ~= nil and sender == Guild2Guild.LocalVars.Leader) then
+				if (incMsg and incMsg ~= nil) then
+					if (string.sub(incMsg,1,1) == "[") then
+--						Guild2Guild.Guild2Guild_PrintDEBUG(Guild2Guild,"inc", incMsg,sender,"NewChatHandler2")
+						local found, realSender, msg
+						found,_,realSender,msg = string.find(incMsg, "%[([^%]]*)%]:(.*)")
 						if (found) then
 							arg1 = Guild2Guild_Vars.color..msg
-							arg2 = sender
+							arg2 = realSender -- to see if setting the global variable helps
+--							Guild2Guild.Guild2Guild_PrintDEBUG(Guild2Guild,"disp", arg1,realSender,arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11,"NewChatHandler3")
 						end
 						
 						if (Guild2Guild.LocalVars.ignores[sender]) then
@@ -2116,6 +2126,7 @@ Guild2Guild = {
 		elseif tCmds[1] == "stackdump" then
 			self:DCF("stackdump created. Please email your guild2guild saved variables file to dbeleznay@shaw.ca.",1)
 			table.insert(GGVars.debugStack,self:Guild2Guild_Clone(GGlocal.debugStack))
+			GGVars.debugAddOns = self:Guild2Guild_GetAddOns()
 		-- DEFAULT
 		else
 			self:DCF("Type "..cColors.cWhite.."/g2g help"..cColors.cSilver.." for a list of commands.",1)
@@ -2127,6 +2138,53 @@ Guild2Guild = {
 		¤¤¤ Accessory Functions ¤¤¤	  
 		¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤
 ]]--
+
+-------------------------------------------------------------------------------
+-- Guild2Guild_GetAddOns - return a list of addons that are loaded
+-------------------------------------------------------------------------------
+	Guild2Guild_GetAddOns = function (self)
+		local addlist = ""
+		for i = 1, GetNumAddOns() do
+			local name, title, notes, enabled, loadable, reason, security = GetAddOnInfo(i)
+	
+			local loaded = IsAddOnLoaded(i)
+			if (loaded) then
+				if not name then name = "Anonymous" end
+				name = name:gsub("[^a-zA-Z0-9]+", "")
+				local version = GetAddOnMetadata(i, "Version")
+				local class = getglobal(name)
+				if not class or type(class)~='table' then class = getglobal(name:lower()) end
+				if not class or type(class)~='table' then class = getglobal(name:sub(1,1):upper()..name:sub(2):lower()) end
+				if not class or type(class)~='table' then class = getglobal(name:upper()) end
+				if class and type(class)=='table' then
+					if (class.version) then
+						version = class.version
+					elseif (class.Version) then
+						version = class.Version
+					elseif (class.VERSION) then
+						version = class.VERSION
+					end
+				end
+				local const = getglobal(name:upper().."_VERSION")
+				if (const) then version = const end
+	
+				if type(version)=='table' then
+					version = table.concat(version,":")
+				end
+	
+				if (version) then
+					addlist = addlist.."  "..name..", v"..version.."\n"
+				else
+					addlist = addlist.."  "..name.."\n"
+				end
+			end
+		end
+		return addlist
+	end,
+	
+-------------------------------------------------------------------------------
+-- AddStackMessage - Adds a debug message to the stack
+-------------------------------------------------------------------------------
 
 	AddStackMessage = function(self,sMsg)
 		if (not (self.Initialized)) then return end
