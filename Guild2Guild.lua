@@ -15,6 +15,17 @@
 	* maybe some UI
 
 	Changelog:
+	7.5.9
+	- fixed error caused when the person you are talking to disconnects, but you still have messages for them
+	- fixed error message when you turn on Blizzard Class Colouring in the chat frame
+
+	7.5.8
+	- shortened the inter-guild message when a player earns an achievement
+
+	7.5.7
+	- changed to use ChatThrottleLib by Mikk  - http://www.wowwiki.com/ChatThrottleLib which should prevent disconnects when a large raid gets an achievement
+	- allow the channel password to be set to NIL by typing /g2g password
+
 	7.5.6
 	- fixed a few minor bugs related to achieviemnts
 	- achievments are no longer broadcasted unless they come from someone in your guild.
@@ -171,8 +182,8 @@ G2G_JOINED	= string.format(ERR_GUILD_JOIN_S, "(.+)")
 G2G_LEFT	= string.format(ERR_GUILD_LEAVE_S, "(.+)")
 G2G_PROMO	= string.format(ERR_GUILD_PROMOTE_SSS, "(.+)", "(.+)", "(.+)")
 G2G_DEMOTE	= string.format(ERR_GUILD_DEMOTE_SSS, "(.+)", "(.+)", "(.+)")
-
-
+G2G_ACHIEVEMENT = string.format(ACHIEVEMENT_BROADCAST, "(.+)", "(.+)")
+G2G_F_ACHIEVEMENT = string.format(ACHIEVEMENT_BROADCAST, "|Hplayer:%s|h[%s]|h", "%s")
 
 --[[
 		¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤
@@ -181,8 +192,8 @@ G2G_DEMOTE	= string.format(ERR_GUILD_DEMOTE_SSS, "(.+)", "(.+)", "(.+)")
 ]]--
 
 Guild2Guild = {
-	Version = "7.5.6",
-	VerNum = 756,
+	Version = "7.5.9",
+	VerNum = 759,
 	playerNotes = {},
 	otherPlayerNotes = {},
 	knownRosters = {},
@@ -821,7 +832,7 @@ local name, note
 ----------------------------
 
 	NewChatHandler = function (self,event,...)
-		local msg, realSender, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11 = ...;
+		local msg, realSender, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11, arg12 = ...;
 
 		-- use the gloabal arg1 and arg2 so that programs like Prat and Phanxchat work as expected.
 		arg1 = msg;
@@ -851,7 +862,7 @@ local name, note
 		  	if (arg2 and arg2 ~=nil and Guild2Guild.LocalVars.Leader and Guild2Guild.LocalVars.Leader ~= nil and arg2 == Guild2Guild.LocalVars.Leader) then
 				if (arg1 and arg1 ~= nil) then
 					if (string.sub(arg1,1,1) == "[") then
---						Guild2Guild.Guild2Guild_PrintDEBUG(Guild2Guild,"inc", arg1,arg2,"NewChatHandler2")
+--						Guild2Guild.Guild2Guild_PrintDEBUG(Guild2Guild,"inc", arg1,arg2, arg12,"NewChatHandler2")
 
 						local found, realSender, msg
 						found,_,realSender,msg = string.find(arg1, "%[([^%]]*)%]: (.*)")
@@ -863,7 +874,14 @@ local name, note
 
 							arg1 = Guild2Guild_Vars.color..msg
 							arg2 = realSender -- to see if setting the global variable helps
---							Guild2Guild.Guild2Guild_PrintDEBUG(Guild2Guild,"disp", arg1,realSender,arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11,"NewChatHandler3")
+                                                        guid = Guild2Guild_Vars.CachedPlayerIDs[arg2];
+							if (guid) then
+								arg12 = guid
+                                                            else
+                                                                arg12=""
+							end
+
+--							Guild2Guild.Guild2Guild_PrintDEBUG(Guild2Guild,"disp", arg1,realSender,arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11,arg12,"NewChatHandler3")
 						end
 
 						if (Guild2Guild.LocalVars.ignores[arg2]) then
@@ -873,10 +891,10 @@ local name, note
 				end
 			end
 		end
---		Guild2Guild.Guild2Guild_PrintDEBUG(Guild2Guild,"inc", event, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11)
+--		Guild2Guild.Guild2Guild_PrintDEBUG(Guild2Guild,"inc", event, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11, arg12)
 
 	-- Call the original ChatFrame_OnEvent function for default handling of the event.
-	G2GOldChatHandler(self, event, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11);
+	G2GOldChatHandler(self, event, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11, arg12);
 
 	end,
 
@@ -926,7 +944,7 @@ local name, note
 		if (not(additionalMsg == nil)) then
 			sMsg = sMsg..";"..additionalMsg
 		end
-		SendAddonMessage("G2G",sMsg,"GUILD")
+		ChatThrottleLib:SendAddonMessage("ALERT", "G2G", sMsg, "GUILD");
 	end,
 
 ----------------------------
@@ -942,9 +960,9 @@ local name, note
 		local sMsg = "<G2G"..self.VerNum..">"..guildName..";"..GGlocal.guildRankIndex..msgType
 
 		if (dest == "CHANNEL") then
-			SendChatMessage(sMsg,"CHANNEL",nil,sID)
+			ChatThrottleLib:SendChatMessage("ALERT", "G2G", sMsg,"CHANNEL",GetDefaultLanguage("player"),sID)
 		elseif (dest == "PLAYER") then
-			SendAddonMessage("G2G",sMsg,"WHISPER",player)
+			ChatThrottleLib:SendAddonMessage("ALERT", "G2G", sMsg, "WHISPER",player)
 		end
 	end,
 
@@ -1041,6 +1059,7 @@ local name, note
 			local timeout = 65
 			if (GGlocal.awaitingQueryResponse) then timeout = 10 end
 			if (time() - GGlocal.LastUpdate > timeout) then
+				self:Guild2Guild_PrintDEBUG("Calling election due to no heartbeat")
 				self:SendElectionMessage(true)
 			end
 		end
@@ -1052,7 +1071,7 @@ local name, note
 -- OnEvent - Main Event Handler
 ----------------------------
 
-	OnEvent = function(self,event,arg1,arg2,arg3,arg4,arg5,arg6,arg7,arg8,arg9,arg10,arg11)
+	OnEvent = function(self,event,arg1,arg2,arg3,arg4,arg5,arg6,arg7,arg8,arg9,arg10,arg11,arg12)
 --		if Guild2Guild_Vars and Guild2Guild_Vars.Debug then self:DCF("\""..event.."\" fired, entry: "..arg1,5,"OnEvent") end
 
 --		if (event ~= "CHAT_MSG_ADDON") then
@@ -1133,6 +1152,10 @@ local name, note
 			if not self:Init_Channel() then return end
 		end
 
+--		if (event ~= "CHAT_MSG_ADDON" and event ~= "CHAT_MSG_GUILD") then
+--			self:Guild2Guild_PrintDEBUG(event,arg1,arg2,arg3,arg4,arg5,arg6,arg7,arg8,arg9,arg10,arg11,arg12, "OnEvent1")
+--		end
+
 		if (event == "CHAT_MSG_CHANNEL_LEAVE" and strlower(arg9) == strlower(GGVars.Channel)) then
 			GGlocal.channelRoster[arg2] = nil
 			if (GGlocal.ignores[arg2] ~= nil) then
@@ -1142,6 +1165,7 @@ local name, note
 			self:HandlePlayerLeaving(arg2)
 		elseif (event == "CHAT_MSG_CHANNEL_JOIN" and strlower(arg9) == strlower(GGVars.Channel)) then
 			GGlocal.channelRoster[arg2] = true
+			GGVars.CachedPlayerIDs[arg2] = arg12
 			if (GGlocal.ignores[arg2] ~= nil) then
 				self:CalculateRank()
 			end
@@ -1150,7 +1174,7 @@ local name, note
 				if (arg3 == "GUILD") then
 					self:HandleGuildSyncMessage(arg2,arg4)
 				elseif (arg3 == "WHISPER") then
-					self:HandleIncomingGuildMessage(arg2, arg4)
+					self:HandleIncomingGuildMessage(arg2, arg4, arg12)
 				end
 -- ADDED: VH
 			elseif (arg1 == "G2GNR" and arg3 == "WHISPER") then
@@ -1202,7 +1226,7 @@ local name, note
 
   		elseif event == "CHAT_MSG_CHANNEL" and strlower(arg9) == strlower(GGVars.Channel) then
   			local addOnMessage = false
-			self:HandleChannelSyncMessage(arg1,arg2,addOnMessage)
+			self:HandleChannelSyncMessage(arg1,arg2,addOnMessage,arg12)
 		elseif event == "CVAR_UPDATE" and arg1 == "GUILDMEMBER_ALERT" then
 			Guild2Guild_Vars.GuildMemberNotify = arg2
 			self:Guild2Guild_PrintDEBUG(event,arg1,arg2, "OnEvent")
@@ -1219,17 +1243,17 @@ local name, note
 			return self:SendLeaderMessage(sendToChannel)
 
 		elseif (event == "CHAT_MSG_SYSTEM") then
-			self:HandleChatMessageSystem(arg1)
+			self:HandleChatMessageSystem(arg1,arg12)
 
 		elseif (event == "CHAT_MSG_GUILD_ACHIEVEMENT" or (event == "CHAT_MSG_ACHIEVEMENT" and arg2 == UnitName("player"))) then
-			self:HandleChatMessageAchievement(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11)
+			self:HandleChatMessageAchievement(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11, arg12)
 
 		elseif (event == "CHAT_MSG_GUILD" and GGVars.EchoGuild)
 			or (event == "CHAT_MSG_OFFICER" and GGVars.EchoOfficer) then
 			self:HandleOutgoingGuildMessage (event, arg1, arg2)
 
 		elseif event == "CHAT_MSG_WHISPER" and string.sub(arg1,1,3) == "G2G" then
-			self:HandleIncomingGuildMessage (arg1, arg2)
+			self:HandleIncomingGuildMessage (arg1, arg2, arg12)
    		end
    	end,
 
@@ -1239,17 +1263,21 @@ local name, note
 
 	HandlePlayerLeaving = function(self, arg2)
 		local GGlocal = Guild2Guild.LocalVars
+		self:Guild2Guild_PrintDEBUG(arg2,"left","HandlePlayerLeaving")
 
 		if (GGlocal.Leader == arg2) then
-			-- debug
 			self:Guild2Guild_PrintDEBUG("leader left - calling election","HandlePlayerLeaving")
 			return self:SendElectionMessage(true)
 		end
 
 		local guild = GGlocal.Relays[arg2]
-		GGlocal.Relays[arg2] = nil
-		if (guild ~= nil and not (GGlocal.Guilds[guild] == nil) and GGlocal.Guilds[guild][1] == arg2) then
-			GGlocal.Guilds[guild]=nil
+		if (guild ~= nil) then
+			self:Guild2Guild_PrintDEBUG(arg2,"relay left","HandlePlayerLeaving")
+			GGlocal.Relays[arg2] = nil
+			ChatThrottleLib:ClearPipe(ChatThrottleLib:PipeName("G2G", "WHISPER", arg2))
+			if (not (GGlocal.Guilds[guild] == nil) and GGlocal.Guilds[guild][1] == arg2) then
+				GGlocal.Guilds[guild]=nil
+			end
 		end
 --		self:executeGUIs("sync", guild, arg2)
 	end,
@@ -1304,6 +1332,7 @@ local name, note
 				GGlocal.Leader = sender
 				GGlocal.CurrMaxVersion = version
 			elseif GGlocal.Leader == UnitName("player") then
+				self:Guild2Guild_PrintDEBUG("Calling election - defending current position")
 				self:SendElectionMessage(false)
 			end
 		elseif (sCmd == "Q" and GGlocal.Leader == UnitName("player")) then
@@ -1325,11 +1354,13 @@ local name, note
 		local leaderRank = tonumber(string.sub(sMsg, 1, 3))
 
 		if (GGlocal.localRank >= leaderRank or version <= 741 or version > 746) and (version < self.VerNum) then
+			self:Guild2Guild_PrintDEBUG("Calling election due to newer version")
 			self:SendElectionMessage(false)
 			return
 		end
 
 		if (self.VerNum == version and GGlocal.localRank > leaderRank) then
+			self:Guild2Guild_PrintDEBUG("Calling election due to lower rank")
 			self:SendElectionMessage(false)
 			return
 		end
@@ -1384,7 +1415,7 @@ local name, note
 -- HandleChannelSyncMessage -
 ----------------------------
 
-	HandleChannelSyncMessage = function(self,message,sender,addOnMessage)
+	HandleChannelSyncMessage = function(self,message,sender,addOnMessage,guid)
 		local GGlocal = Guild2Guild.LocalVars
 
 		self:Guild2Guild_PrintDEBUG("relay heartbeat:"..message.."->"..sender,addOnMessage,"HandleChannelSyncMessage")
@@ -1404,7 +1435,7 @@ local name, note
 		end
 
 		if (sCmd == "L" or sCmd == "I") then
-			self:UpdateRelayInfo(guild,sender,version,officer, sCmd=="I",addOnMessage)
+			self:UpdateRelayInfo(guild,sender,version,officer, sCmd=="I",addOnMessage,guid)
 
 		elseif (sCmd == "Q" and GGlocal.Leader == UnitName("player")) then
 			self:SendCrossGuildSyncMessage("L", "PLAYER", sender)
@@ -1417,7 +1448,7 @@ local name, note
 ----------------------------
 -- UpdateRelayInfo -
 ----------------------------
-	UpdateRelayInfo = function(self,guild,sender,version,officer, reintialize, addOnMessage)
+	UpdateRelayInfo = function(self,guild,sender,version,officer, reintialize, addOnMessage, guid)
 		self:Guild2Guild_PrintDEBUG(guild, sender, version, officer, addOnMessage,"UpdateRelayInfo")
 		local GGlocal = Guild2Guild.LocalVars
 		local GGVars = Guild2Guild_Vars
@@ -1455,7 +1486,7 @@ local name, note
 					if (Guild2Guild.knownRosters[guild] == nil) then
 						-- ... ask the relay to send its roster to our guild
 --						DEFAULT_CHAT_FRAME:AddMessage("Asking " .. sender .. " to send guild roster")
---						SendAddonMessage("G2GNR", "Y;;;", "WHISPER", sender)
+--						ChatThrottleLib:SendAddonMessage("NORMAL", "G2GNR", "Y;;;", "WHISPER", sender)
 					end
 -- END: VH
 					self:SendCrossGuildSyncMessage("L", "PLAYER", sender)
@@ -1464,6 +1495,7 @@ local name, note
 
 			GGlocal.Guilds[guild] = {sender,version,officer == "9",time(),GGlocal.VerifiedGuilds[guild]}
 			GGlocal.Relays[sender] = guild;
+			GGVars.CachedPlayerIDs[sender] = guid
 		else
 			if (GGlocal.AlliedGuilds[guild] == nil) then
 				self:DCF("Refused incoming connection from:"..guild.." initiated by:".. sender,1)
@@ -1527,9 +1559,9 @@ local name, note
 				if (key ~= GetGuildInfo("player")) then
 					if (value and value ~= nil and value[1] ~= nil and value[1] ~= UnitName("player") and value[5]) then
 						if (value[2] < 729) then
-							SendChatMessage(sMsg[msg],"WHISPER",this.language,value[1])
+							ChatThrottleLib:SendChatMessage("NORMAL", "G2G", sMsg[msg],"WHISPER",GetDefaultLanguage("player"),value[1])
 						else
-							SendAddonMessage("G2G",sMsg[msg],"WHISPER",value[1])
+							ChatThrottleLib:SendAddonMessage("NORMAL", "G2G", sMsg[msg], "WHISPER",value[1])
 						end
 					end
 				end
@@ -1541,7 +1573,7 @@ local name, note
 -- HandleChatMessageSystem -
 ----------------------------
 
-	HandleChatMessageSystem = function(self, arg1)
+	HandleChatMessageSystem = function(self, arg1, guid)
 		local GGlocal = Guild2Guild.LocalVars
 
 		local player;
@@ -1612,12 +1644,15 @@ local name, note
 ----------------------------
 -- HandleChatMessageAchievement -
 ----------------------------
-	HandleChatMessageAchievement = function(self, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11)
-		self:Guild2Guild_PrintDEBUG("HandleChatMessageAchievement", arg1, arg2)
+	HandleChatMessageAchievement = function(self, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11, arg12)
+		self:Guild2Guild_PrintDEBUG("HandleChatMessageAchievement", arg1, arg2, arg12)
 
+		_, _, _, achievement = string.find(arg1, G2G_ACHIEVEMENT)
+
+                local extra = achievement..";"..arg12..";"
 		local event;
-		event = "A"
-		self:SendOutgoingAuxMessage(arg2,event, arg1);
+		event = "C"
+		self:SendOutgoingAuxMessage(arg2,event, extra);
 	end,
 
 ----------------------------
@@ -1635,11 +1670,9 @@ local name, note
 			if (key ~= GetGuildInfo("player")) then
 				if (value and value ~= nil and value[1] ~= nil and value[1] ~= UnitName("player") and value[5]) then
 					if (value[2] > 741) then
-						SendAddonMessage("G2G",sMsg,"WHISPER",value[1])
+						ChatThrottleLib:SendAddonMessage("BULK", "G2G",sMsg,"WHISPER",value[1])
 					end
 				end
---			else
---				SendAddonMessage("G2G",sMsg,"WHISPER",value[1])
 			end
 		end
 	end,
@@ -1712,7 +1745,7 @@ local name, note
 			if (key ~= GetGuildInfo("player")) then
 				if (value and value ~= nil and value[1] ~= nil and value[1] ~= UnitName("player") and value[5]) then
 					if (value[2] > 734) then
-						SendAddonMessage("G2G",sMsg,"WHISPER",value[1])
+						ChatThrottleLib:SendAddonMessage("BULK", "G2G",sMsg,"WHISPER",value[1])
 					end
 				end
 			end
@@ -1745,7 +1778,7 @@ local name, note
 		GGlocal.receivedAddonMessage = {addon,sMsg}
 
 		if (found) then
-			SendAddonMessage(addon,sMsg,"GUILD")
+			ChatThrottleLib:SendAddonMessage("BULK",addon,sMsg,"GUILD")
 		end
 	end,
 
@@ -1783,7 +1816,7 @@ local name, note
 			-- ... for each of my guild members ...
 			for name, note in pairs(Guild2Guild.playerNotes) do
 				-- ... tell the logged in player to record the player info
-				SendAddonMessage("G2GR", "Z;" .. name .. ";" .. GetGuildInfo("player") .. ";" .. note, "WHISPER", player)
+				ChatThrottleLib:SendAddonMessage("NORMAL", "G2GR", "Z;" .. name .. ";" .. GetGuildInfo("player") .. ";" .. note, "WHISPER", player)
 			end
 		end
 		-- if player is not in my guild ...
@@ -1825,6 +1858,32 @@ local name, note
 					ChatFrame_OnEvent(chatFrame, "CHAT_MSG_GUILD_ACHIEVEMENT",  rest .." ("..guild..")", player, "", "", player, "", 0, 0, "", 0, 172);
 				end
 			end
+		elseif (event == "B") then
+			self:Guild2Guild_PrintDEBUG("displaying ",event,player, guild, rest, "HandleGuildAuxMessage")
+			achievement = rest;
+			sMsg = string.format(G2G_F_ACHIEVEMENT, player, player, achievement).." ("..guild..")"
+			for i=1, NUM_CHAT_WINDOWS do
+				chatFrame = getglobal("ChatFrame"..i);
+				if (Guild2Guild.IsChatTypeVisible("GUILD_ACHIEVEMENT", chatFrame)) then
+					ChatFrame_OnEvent(chatFrame, "CHAT_MSG_GUILD_ACHIEVEMENT",  sMsg, player, "", "", player, "", 0, 0, "", 0, 172, "");
+				end
+			end
+			sMsg = nil
+		elseif (event == "C") then
+			found,_, achievement, guid = string.find(rest,"([^;]-);([^;]-);")
+			self:Guild2Guild_PrintDEBUG("displaying ",event,player, guild, achievement, guid, "HandleGuildAuxMessage")
+			GGVars.CachedPlayerIDs[player] = guid
+
+			local coloredName = GetColoredName("CHAT_MSG_GUILD_ACHIEVEMENT", sMsg, player, "", "", player, "", 0, 0, "", 0, 172, guid);
+
+			sMsg = string.format(G2G_F_ACHIEVEMENT, player, coloredName, achievement).." ("..guild..")"
+			for i=1, NUM_CHAT_WINDOWS do
+				chatFrame = getglobal("ChatFrame"..i);
+				if (Guild2Guild.IsChatTypeVisible("GUILD_ACHIEVEMENT", chatFrame)) then
+					ChatFrame_OnEvent(chatFrame, "CHAT_MSG_GUILD_ACHIEVEMENT",  sMsg, player, "", "", player, "", 0, 0, "", 0, 172, guid);
+				end
+			end
+			sMsg = nil
 -- ADD: VH
 		elseif (event == "Z") then
 			found, _, note, online = string.find(rest, "([^;]-);(.*)")
@@ -1863,7 +1922,7 @@ local name, note
 -- HandleIncomingGuildMessage -
 ----------------------------
 
-	HandleIncomingGuildMessage = function(self, message, sender)
+	HandleIncomingGuildMessage = function(self, message, sender, guid)
 		local GGlocal = Guild2Guild.LocalVars
 		local GGVars = Guild2Guild_Vars
 
@@ -1880,7 +1939,7 @@ local name, note
 		end
 		if (string.sub(message,1,1)=="<") then
 			local addOnMessage = true
-			self:HandleChannelSyncMessage(message, sender, addOnMessage)
+			self:HandleChannelSyncMessage(message, sender, addOnMessage, guid)
 			return
 		end
 		if (GGlocal.Relays[sender] ~= nil) then
@@ -1913,14 +1972,14 @@ local name, note
 			end
 			if (sChan == "OFFICER" and GGlocal.OfficerRank ~= nil and not GGlocal.PlayerIsOfficer) then
 				if (not GGlocal.OfficersWarned) then
-					SendChatMessage("G2GO["..sender.."]: Guild2Guild: Warning officer chat is not connected to "..GetGuildInfo("player"),"WHISPER",this.language,sender)
+					ChatThrottleLib:SendChatMessage("NORMAL", "G2G", "G2GO["..sender.."]: Guild2Guild: Warning officer chat is not connected to "..GetGuildInfo("player"),"WHISPER",GetDefaultLanguage("player"),sender)
 					GGlocal.OfficersWarned = true
 				end
 				return
 			end
 
 			local sMsg = string.sub(message,5)
-			return SendChatMessage(sMsg,sChan,this.language,sID)
+			return ChatThrottleLib:SendChatMessage("NORMAL", "G2G", sMsg,sChan,GetDefaultLanguage("player"),sID)
 		else
 			if (GGlocal.RejectedRelays[sender] == nil) then
 				self:SendCrossGuildSyncMessage("Q", "PLAYER", sender)
@@ -1944,10 +2003,10 @@ local name, note
 		local GGVars = Guild2Guild_Vars
 		local GGlocal = Guild2Guild.LocalVars
 
-		SendChatMessage("Version Number: "..self.Version,"WHISPER",nil,sender)
+		ChatThrottleLib:SendChatMessage("BULK", "G2G", "Version Number: "..self.Version,"WHISPER",GetDefaultLanguage("player"),sender)
 		for guild, relay in pairs(GGlocal.Guilds) do
 			if relay[3] then sTemp = "true" else sTemp = "false" end
-			SendChatMessage("Connected to: "..guild.." using "..relay[1]..": Ver"..relay[2]..", Officer: "..sTemp,"WHISPER",nil,sender)
+			ChatThrottleLib:SendChatMessage("BULK", "G2G", "Connected to: "..guild.." using "..relay[1]..": Ver"..relay[2]..", Officer: "..sTemp,"WHISPER",GetDefaultLanguage("player"),sender)
 		end
 
 		local sTemp = ""
@@ -1969,10 +2028,10 @@ local name, note
 		else
 			sTemp = sNOTSET
 		end
-		SendChatMessage("Allied Guilds:"..sTemp,"WHISPER",nil,sender)
+		ChatThrottleLib:SendChatMessage("BULK", "G2G", "Allied Guilds:"..sTemp,"WHISPER",GetDefaultLanguage("player"),sender)
 		count = 0
 		sTemp = ""
-		if rejectCount > 0 then SendChatMessage("Rejected Connections:"..sRejectedConnections,"WHISPER",nil,sender) end
+		if rejectCount > 0 then ChatThrottleLib:SendChatMessage("BULK", "G2G", "Rejected Connections:"..sRejectedConnections,"WHISPER",GetDefaultLanguage("player"),sender) end
 		rejectCount = 0
 		sRejectedConnections = ""
 
@@ -1991,21 +2050,21 @@ local name, note
 		else
 			sTemp = sNOTSET
 		end
-		SendChatMessage("Verified Guilds:"..sTemp,"WHISPER",nil,sender)
-		if rejectCount > 0 then SendChatMessage("Unverified Guilds:"..sRejectedConnections,"WHISPER",nil,sender) end
+		ChatThrottleLib:SendChatMessage("BULK", "G2G", "Verified Guilds:"..sTemp,"WHISPER",GetDefaultLanguage("player"),sender)
+		if rejectCount > 0 then ChatThrottleLib:SendChatMessage("BULK", "G2G", "Unverified Guilds:"..sRejectedConnections,"WHISPER",GetDefaultLanguage("player"),sender) end
 		if (GGlocal.OfficerRank ~= nil) then sTemp = GGlocal.OfficerRank else sTemp = sNOTSET end
-		SendChatMessage("Officer Rank:"..sTemp,"WHISPER",nil,sender)
+		ChatThrottleLib:SendChatMessage("BULK", "G2G", "Officer Rank:"..sTemp,"WHISPER",GetDefaultLanguage("player"),sender)
 		if GGVars.EchoGuild then sTemp = sON else sTemp = sOFF end
-		SendChatMessage("Guild chat relay is: "..sTemp,"WHISPER",nil,sender)
+		ChatThrottleLib:SendChatMessage("BULK", "G2G", "Guild chat relay is: "..sTemp,"WHISPER",GetDefaultLanguage("player"),sender)
 		if GGVars.EchoOfficer then sTemp = sON else sTemp = sOFF end
-		SendChatMessage("Officer chat relay is: "..sTemp,"WHISPER",nil,sender)
+		ChatThrottleLib:SendChatMessage("BULK", "G2G", "Officer chat relay is: "..sTemp,"WHISPER",GetDefaultLanguage("player"),sender)
 		if GGVars.ShowNewRelayMessages then sTemp = sON else sTemp = sOFF end
-		SendChatMessage("Relay Change Notification is: "..sTemp,"WHISPER",nil,sender)
+		ChatThrottleLib:SendChatMessage("BULK", "G2G", "Relay Change Notification is: "..sTemp,"WHISPER",GetDefaultLanguage("player"),sender)
 		if GGVars.Startdelay then sTemp = GGVars.Startdelay else sTemp = sNOTSET end
-		SendChatMessage("The Startdelay is: "..sTemp,"WHISPER",nil,sender)
-		SendChatMessage("Oldest Version Seen: "..GGlocal.OldestVersion,"WHISPER",nil,sender)
+		ChatThrottleLib:SendChatMessage("BULK", "G2G", "The Startdelay is: "..sTemp,"WHISPER",GetDefaultLanguage("player"),sender)
+		ChatThrottleLib:SendChatMessage("BULK", "G2G", "Oldest Version Seen: "..GGlocal.OldestVersion,"WHISPER",GetDefaultLanguage("player"),sender)
 		for player, version in pairs(GGlocal.versions) do
-			SendChatMessage("  "..player..": "..version,"WHISPER",nil,sender)
+			ChatThrottleLib:SendChatMessage("BULK", "G2G", "  "..player..": "..version,"WHISPER",GetDefaultLanguage("player"),sender)
 		end
 
 	end,
@@ -2180,8 +2239,6 @@ local name, note
       	-- StartDelay
 		elseif tCmds[1] == "startdelay" then
 			if tCmds[2] then
-				if GGVars.Startdelay then
-     				end
 				GGVars.Startdelay = tonumber(tCmds[2])
 				self:DCF("Startdelay is now set to: "..cColors.cWhite..tCmds[2],1)
 			else
@@ -2189,14 +2246,11 @@ local name, note
 			end
       	-- Password
 		elseif tCmds[1] == "password" then
-			if tCmds[2] then
-				GGVars.Password = tCmds[2]
-				self:Init_Channel()
-				self:DCF("Password is now set to: "..cColors.cWhite..tCmds[2],1)
-			else
-				self:DCF(false,0)
-			end
-
+			GGVars.Password = tCmds[2]
+			self:Init_Channel()
+			local sTemp
+			if GGVars.Password then sTemp = cColors.cWhite..GGVars.Password else sTemp = sNOTSET end
+			self:DCF("Password is now set to: "..cColors.cWhite..sTemp,1)
 		-- REPORT
 		elseif tCmds[1] == "report" then
 			local sTemp
@@ -2351,13 +2405,19 @@ local name, note
 		-- DEFAULT
 		elseif tCmds[1] == "test" then
 
-		local event = "A";
+		local event = "C";
 		local player = "Durthos";
-		local extra = "|Hplayer:Durthos|h[Durthos]|h has earned the achievement |cffffff00|Hachievement:768:030000000021A890:1:6:10:9:4294967295:4294967295:4294967295:4294967295|h[Explore Tirisfal Glades]|h|r!";
+		local extra = "|cffffff00|Hachievement:768:030000000021A890:1:6:10:9:4294967295:4294967295:4294967295:4294967295|h[Explore Tirisfal Glades]|h|r;0x0300000003376CEE;";
 		local sMsg = event..";"..player..";"..GetGuildInfo("player")..";"..extra
 
 		self:HandleGuildAuxMessage(sMsg);
+--[[
+			ChatThrottleLib:SendAddonMessage("NORMAL", "G2G", "|cffffff00|Hachievement:768:030000000021A890:1:6:10:9:4294967295:4294967295:4294967295:4294967295|h[Explore Tirisfal Glades]|h|r;0x0300000003376CEE;", "WHISPER",tCmds[2])
+			ChatThrottleLib:SendAddonMessage("NORMAL", "G2G", "|cffffff00|Hachievement:768:030000000021A890:1:6:10:9:4294967295:4294967295:4294967295:4294967295|h[Explore Tirisfal Glades]|h|r;0x0300000003376CEE;", "WHISPER",tCmds[2])
 
+		ChatThrottleLib:ClearPipe(ChatThrottleLib:PipeName("G2G", "WHISPER", tCmds[2]))
+--                self:HandlePlayerLeaving(tCmds[2]);
+]]--
 		else
 			self:DCF("Type "..cColors.cWhite.."/g2g help"..cColors.cSilver.." for a list of commands.",1)
 		end
@@ -2555,5 +2615,29 @@ local name, note
 		end
 		return result
 	end,
-}
+};
+
+
+if (_G.ChatThrottleLib) then
+  local rehook = false
+  if(_G.ChatThrottleLib.version ~= 20) then
+    rehook = true
+    Guild2Guild.Guild2Guild_PrintDEBUG(Guild2Guild,"Failed to find my version of ChatThrottleLib: new version found", _G.ChatThrottleLib.version)
+  elseif (_G.ChatThrottleLib.ClearPipe == nil) then
+    rehook = true
+    Guild2Guild.Guild2Guild_PrintDEBUG(Guild2Guild,"Failed to find my version of ChatThrottleLib: Someone else loaded it first", _G.ChatThrottleLib.version)
+  end
+
+  if (rehook) then
+    function _G.ChatThrottleLib:ClearPipe (pipename)
+      Guild2Guild.Guild2Guild_PrintDEBUG(Guild2Guild, "Running Stub ClearPipe")
+    end
+
+    function _G.ChatThrottleLib:PipeName (prefix, chattype, destination)
+      return (prefix..(chattype or "SAY")..(destination or ""))
+    end
+  end
+end
+
+
 --[[¤¤¤ EOF ¤¤¤]]--

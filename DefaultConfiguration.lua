@@ -24,6 +24,7 @@ DefaultGuild2Guild_Vars = {
 	RelayAddonMessages = true,    -- default: true - controls all addon sending behaviour
 	NewAddonDefault = false,      -- default: false - enable forwarding addon messages from the guild channel - specifiies the default behaviour for new add-ons
 	Passive = false,              -- default: false - enable to indicate that you should only be elected as relay as a last resort (for slow internet connections)
+        CachedPlayerIDs = {},
 	["addons"] = {                -- overridden (addons which will either be forwarded or not directly)
 		["GUILDMAP"] = false,
 		["CGP"] = false,
