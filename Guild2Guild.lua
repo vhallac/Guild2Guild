@@ -185,6 +185,9 @@ G2G_DEMOTE	= string.format(ERR_GUILD_DEMOTE_SSS, "(.+)", "(.+)", "(.+)")
 G2G_ACHIEVEMENT = string.format(ACHIEVEMENT_BROADCAST, "(.+)", "(.+)")
 G2G_F_ACHIEVEMENT = string.format(ACHIEVEMENT_BROADCAST, "|Hplayer:%s|h[%s]|h", "%s")
 
+-- Callback handler we use to fire custom events
+
+local cbh
 --[[
 		¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤
 		¤¤¤ Variable Setup ¤¤¤
@@ -1184,15 +1187,13 @@ local name, note
 				if (cmd == "Z") then
 --					DEFAULT_CHAT_FRAME:AddMessage("cmd z")
 					found, _, note, online = string.find(extra, "([^;]-);(.*)")
-					Guild2Guild.knownRosters[guild] = true
-					Guild2Guild.otherPlayerNotes[player] = {}
-					Guild2Guild.otherPlayerNotes[player].guild = guild
-					Guild2Guild.otherPlayerNotes[player].note = note
-					if (G2GFu and online == "1") then
-						G2GFu.OnlineUsers[player] = {
-							guild = guild,
-							note = note
-						}
+					self.knownRosters[guild] = true
+					self.otherPlayerNotes[player] = Guild2Guild.otherPlayerNotes[player] or {}
+					self.otherPlayerNotes[player].guild = guild
+					self.otherPlayerNotes[player].note = note
+					self.otherPlayerNotes[player].online = online
+					if online == "1" then
+						cbh:Fire("PLAYERONLINE", player, guild, note)
 					end
 				elseif (cmd == "Y") then
 -- 				DEFAULT_CHAT_FRAME:AddMessage("cmd y")
@@ -1814,27 +1815,35 @@ local name, note
 		-- If I am the relay ...
 		if (GGlocal.Leader == UnitName("player")) then
 			-- ... for each of my guild members ...
-			for name, note in pairs(Guild2Guild.playerNotes) do
+			for name, note in pairs(self.playerNotes) do
 				-- ... tell the logged in player to record the player info
 				ChatThrottleLib:SendAddonMessage("NORMAL", "G2GR", "Z;" .. name .. ";" .. GetGuildInfo("player") .. ";" .. note, "WHISPER", player)
 			end
 		end
 		-- if player is not in my guild ...
-		if (G2GFu and not GGlocal.guildRoster[player] and G2GFu.OnlineUsers[player]) then
-			-- ... add to other guild's roster display table
-			G2GFu.OnlineUsers[player] = {
-				guild = Guild2Guild.otherPlayerNotes[player].guild,
-				note = Guild2Guild.otherPlayerNotes[player].note
-			}
+		if not GGlocal.guildRoster[player] then
+			if self.otherPlayerNotes[player] then
+				-- ... mark as online and ...
+				self.otherPlayerNotes[player].online = "1"
+				-- ... add to other guild's roster display table
+				cbh:Fire("PLAYERONLINE", player, self.otherPlayerNotes[player].guild, self.otherPlayerNotes[player].note)
+			else
+				cbh:Fire("PLAYERONLINE", player, "", "")
+			end
 		end
+-- TODO:
 -- END: VH
 			PlaySound("FriendJoinGame")
 		elseif (event == "F" and not(Guild2Guild_Vars.GuildMemberNotify == "0" or GGlocal.friends[player])) then
 -- ADD: VH
 		-- if player is not in my guild ...
-		if (G2GFu and not GGlocal.guildRoster[player]) then
-			--  .. remove from other guild's roster display table
-			G2GFu.OnlineUsers[player] = nil
+		if (not GGlocal.guildRoster[player]) then
+			-- ... mark player as offline ...
+			if self.otherPlayerNotes[player] then
+				self.otherPlayerNotes[player].online = "0"
+			end
+			-- ... and remove from other guild's roster display table
+			cbh:Fire("PLAYEROFFLINE", player)
 		end
 -- END: VH
 			sMsg = string.format(ERR_FRIEND_OFFLINE_S, player).." ("..guild..")"
@@ -1887,15 +1896,13 @@ local name, note
 -- ADD: VH
 		elseif (event == "Z") then
 			found, _, note, online = string.find(rest, "([^;]-);(.*)")
-			Guild2Guild.knownRosters[guild] = true
-			Guild2Guild.otherPlayerNotes[player] = {}
-			Guild2Guild.otherPlayerNotes[player].guild = guild
-			Guild2Guild.otherPlayerNotes[player].note = note
-			if (G2GFu and online == "1") then
-				G2GFu.OnlineUsers[player] = {
-					guild = guild,
-					note = note
-				}
+			self.knownRosters[guild] = true
+			self.otherPlayerNotes[player] = Guild2Guild.otherPlayerNotes[player] or {}
+			self.otherPlayerNotes[player].guild = guild
+			self.otherPlayerNotes[player].note = note
+			self.otherPlayerNotes[player].online = online
+			if (online == "1") then
+				cbh:Fire("PLAYERONLINE", player, guild, note)
 			end
 -- END: VH
 		end
@@ -2615,8 +2622,30 @@ local name, note
 		end
 		return result
 	end,
+
+	getOnlineUsers = function(self, tbl)
+		for player, info in pairs(self.otherPlayerNotes) do
+			if info.online == "1" then
+				table.insert(tbl, {
+					player = player,
+					guild = info.guild or "",
+					note = info.note or ""
+				})
+			end
+		end
+		return tbl
+	end,
+
+--[[
+	The callback object to register events to.
+	The events that may get fired are:
+	* PLAYERONLINE: playerOnline(event, playerName, playerGuild, playerInfo)
+	* PLAYEROFFLINE: playerOffline(event, playerName)
+]]--
+	infocb = {}
 };
 
+cbh = LibStub:GetLibrary("CallbackHandler-1.0", 3):New(Guild2Guild.infocb)
 
 if (_G.ChatThrottleLib) then
   local rehook = false
