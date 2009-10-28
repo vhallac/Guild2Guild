@@ -4,5 +4,5 @@
 ## Author: Durthos <dbeleznay@shaw.ca> of Proudmoore
 ## Notes: Transmits messages between guilds using guild chat (or officer chat).
 ## SavedVariablesPerCharacter: Guild2Guild_Vars
-ChatThrottleLib\ChatThrottleLib.xml
+libs/ChatThrottleLib\ChatThrottleLib.xml
 Guild2Guild.xml
