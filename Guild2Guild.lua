@@ -1817,7 +1817,7 @@ local name, note
 			-- ... for each of my guild members ...
 			for name, note in pairs(self.playerNotes) do
 				-- ... tell the logged in player to record the player info
-				ChatThrottleLib:SendAddonMessage("NORMAL", "G2GR", "Z;" .. name .. ";" .. GetGuildInfo("player") .. ";" .. note, "WHISPER", player)
+				ChatThrottleLib:SendAddonMessage("NORMAL", "G2GNR", "Z;" .. name .. ";" .. GetGuildInfo("player") .. ";" .. note, "WHISPER", player)
 			end
 		end
 		-- if player is not in my guild ...
