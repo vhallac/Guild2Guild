@@ -1201,7 +1201,7 @@ local name, note
 					local name, note, online
 					numPlayersTotal = GetNumGuildMembers(true)
 					for i = 1, numPlayersTotal do
-						name, _, _, _, _, _, note, _, online, _ = GetGuildRosterInfo(i)
+						name, rank, rankindex, level, class, zone, note, officernote, online, status = GetGuildRosterInfo(i)
 						online = online and "1" or "0"
 						if name then
 							self:SendTargetedAuxMessage(arg4, name, "Z", note .. ";" .. online);
@@ -1486,8 +1486,8 @@ local name, note
 					-- If we haven't seen this guild before ...
 					if (Guild2Guild.knownRosters[guild] == nil) then
 						-- ... ask the relay to send its roster to our guild
---						DEFAULT_CHAT_FRAME:AddMessage("Asking " .. sender .. " to send guild roster")
---						ChatThrottleLib:SendAddonMessage("NORMAL", "G2GNR", "Y;;;", "WHISPER", sender)
+						DEFAULT_CHAT_FRAME:AddMessage("Asking " .. sender .. " to send guild roster")
+						ChatThrottleLib:SendAddonMessage("NORMAL", "G2GNR", "Y;;;", "WHISPER", sender)
 					end
 -- END: VH
 					self:SendCrossGuildSyncMessage("L", "PLAYER", sender)
@@ -2636,13 +2636,23 @@ local name, note
 		return tbl
 	end,
 
---[[
+
+	RequestPlayerInfos = function(self)
+		local playerName = UnitName("player")
+		for name, guild in pairs(self.LocalVars.Relays) do
+			if name ~= playerName then
+				ChatThrottleLib:SendAddonMessage("NORMAL", "G2GNR", "Y;;;", "WHISPER", name)
+			end
+		end
+	end,
+
+	--[[
 	The callback object to register events to.
 	The events that may get fired are:
 	* PLAYERONLINE: playerOnline(event, playerName, playerGuild, playerInfo)
 	* PLAYEROFFLINE: playerOffline(event, playerName)
 ]]--
-	infocb = {}
+	infocb = {},
 };
 
 cbh = LibStub:GetLibrary("CallbackHandler-1.0", 3):New(Guild2Guild.infocb)
